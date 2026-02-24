@@ -73,7 +73,7 @@ cd invariant
 ### Step 2 — Install Python dependencies
 
 ```bash
-pip install -r invariant/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### Step 3 — Build and start local subtensor

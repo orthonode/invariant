@@ -137,11 +137,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `SECURITY.md` — Security disclosure policy
 - `LICENSE` — MIT License
 - `docs/PITCH.md` — Hackquest ideathon pitch document
-- `docs/OAP_PROTOCOL.md` — OAP protocol specification
-- `docs/GATE_PROTOCOL.md` — Four-gate protocol specification
 - `docs/INCENTIVE_MECHANISM.md` — Incentive mechanism deep dive
 - `docs/DEPLOYMENT_GUIDE.md` — Full deployment guide
-- `INVARIANT_DEBUG_REPORT.md` — Development debug log
+- `docs/LOCAL_TESTING.md` — Local test suite guide (no node required)
 
 ### Added — Configuration
 

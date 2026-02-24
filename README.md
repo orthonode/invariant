@@ -137,25 +137,22 @@ INVARIANT/
 │
 ├── scripts/
 │   ├── test_locally.py           ← Local test harness (no node required)
-│   ├── demo.py                   ← Live demo script
+│   ├── deploy_testnet.py         ← Testnet deployment automation
 │   ├── setup_wallets.py          ← Wallet creation helper
 │   ├── register_subnet.py        ← Subnet registration helper
 │   └── launch_nodes.py           ← Launch miner + validator helper
 │
 ├── docs/
-│   ├── ARCHITECTURE.md           ← Full architecture + Mermaid diagrams
-│   ├── THREAT_MODEL.md           ← Complete threat model
 │   ├── WHITEPAPER.md             ← Technical whitepaper
-│   ├── OAP_PROTOCOL.md           ← OAP protocol specification
-│   ├── GATE_PROTOCOL.md          ← Four-gate protocol specification
 │   ├── INCENTIVE_MECHANISM.md    ← Incentive mechanism deep dive
 │   ├── PITCH.md                  ← Hackquest ideathon pitch document
-│   └── DEPLOYMENT_GUIDE.md       ← Full deployment guide
+│   ├── DEPLOYMENT_GUIDE.md       ← Full deployment guide
+│   └── LOCAL_TESTING.md          ← Local test suite guide
 │
 ├── README.md
 ├── ROADMAP.md
-├── THREAT_MODEL.md
-├── ARCHITECTURE.md
+├── THREAT_MODEL.md               ← Complete threat model
+├── ARCHITECTURE.md               ← Full architecture + Mermaid diagrams
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
@@ -177,7 +174,7 @@ INVARIANT/
 git clone https://github.com/orthonode/invariant.git
 cd invariant
 
-pip install -r invariant/requirements.txt
+pip install -r requirements.txt
 
 # Run the full local test suite — no node required
 python scripts/test_locally.py

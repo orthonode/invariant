@@ -252,7 +252,7 @@ Run the benchmark yourself:
 ```bash
 git clone https://github.com/orthonode/invariant
 cd invariant
-pip install -r invariant/requirements.txt
+pip install -r requirements.txt
 python scripts/test_locally.py
 ```
 

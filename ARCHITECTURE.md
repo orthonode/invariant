@@ -484,7 +484,7 @@ graph TD
 
     subgraph SCRIPTS_LAYER["Scripts"]
         TEST_LOCAL["scripts/test_locally.py"]
-        DEMO["scripts/demo.py"]
+        DEPLOY["scripts/deploy_testnet.py"]
         SETUP_W["scripts/setup_wallets.py"]
         REG_S["scripts/register_subnet.py"]
         LAUNCH["scripts/launch_nodes.py"]
@@ -503,7 +503,7 @@ graph TD
     NP --> VALIDATOR_BT
     BRIDGE --> TEST_LOCAL & PYTEST
     OAP --> TEST_LOCAL & PYTEST
-    MINER_BT & VALIDATOR_BT --> LAUNCH
+    MINER_BT & VALIDATOR_BT --> LAUNCH & DEPLOY
 ```
 
 ---

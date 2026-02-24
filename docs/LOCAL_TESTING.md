@@ -10,7 +10,7 @@
 # Clone and install
 git clone https://github.com/orthonode/invariant.git
 cd invariant
-pip install -r invariant/requirements.txt
+pip install -r requirements.txt
 
 # Run everything
 python3 scripts/test_locally.py
@@ -274,7 +274,7 @@ GitHub Actions example:
 ```yaml
 - name: Run INVARIANT test suite
   run: |
-    pip install -r invariant/requirements.txt
+    pip install -r requirements.txt
     python3 scripts/test_locally.py --no-color --quick
 
 - name: Run pytest
