@@ -22,22 +22,26 @@ use serde::{Deserialize, Serialize};
 pub struct RegistryFile {
     pub version: u32,
     /// hex agent_id → metadata
-    pub agents:  HashMap<String, AgentMeta>,
+    pub agents: HashMap<String, AgentMeta>,
     /// list of approved model hashes (hex)
-    pub models:  Vec<String>,
+    pub models: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentMeta {
-    pub hotkey:     String,
-    pub registered: f64,   // unix timestamp
+    pub hotkey: String,
+    pub registered: f64, // unix timestamp
     #[serde(default)]
-    pub metadata:   serde_json::Value,
+    pub metadata: serde_json::Value,
 }
 
 impl Default for RegistryFile {
     fn default() -> Self {
-        Self { version: 1, agents: HashMap::new(), models: Vec::new() }
+        Self {
+            version: 1,
+            agents: HashMap::new(),
+            models: Vec::new(),
+        }
     }
 }
 
@@ -50,7 +54,7 @@ struct Inner {
     /// Set of approved model hashes (hex strings)
     models: HashSet<String>,
     /// Full metadata for informational queries
-    meta:   HashMap<String, AgentMeta>,
+    meta: HashMap<String, AgentMeta>,
 }
 
 /// Thread-safe registry shared between the verifier and registration code.
@@ -86,8 +90,8 @@ impl Registry {
         let inner = self.0.read().unwrap();
         let file = RegistryFile {
             version: 1,
-            agents:  inner.meta.clone(),
-            models:  inner.models.iter().cloned().collect(),
+            agents: inner.meta.clone(),
+            models: inner.models.iter().cloned().collect(),
         };
         let json = serde_json::to_string_pretty(&file)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
@@ -119,7 +123,7 @@ impl Registry {
         let hex = hex::encode(agent_id);
         let mut inner = self.0.write().unwrap();
         let meta = AgentMeta {
-            hotkey:     hotkey.to_owned(),
+            hotkey: hotkey.to_owned(),
             registered: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs_f64())
@@ -150,7 +154,9 @@ impl Registry {
 }
 
 impl Default for Registry {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -158,8 +164,8 @@ mod tests {
     use super::*;
 
     fn test_registry() -> (Registry, [u8; 32], [u8; 32]) {
-        let reg        = Registry::new();
-        let agent_id   = [0xAAu8; 32];
+        let reg = Registry::new();
+        let agent_id = [0xAAu8; 32];
         let model_hash = [0xBBu8; 32];
         reg.register_agent(&agent_id, "5FakeHotkey", serde_json::Value::Null);
         reg.approve_model(&model_hash);

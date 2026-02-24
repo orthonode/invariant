@@ -58,27 +58,35 @@ impl CounterState {
 /// Result of a full gate pass — includes gate number for OAP violation mapping.
 #[derive(Debug, Clone)]
 pub struct VerifyResult {
-    pub result:      GateResult,
-    pub gate_number: u8,   // 0 = pass, 1-4 = which gate failed
-    pub detail:      String,
+    pub result: GateResult,
+    pub gate_number: u8, // 0 = pass, 1-4 = which gate failed
+    pub detail: String,
 }
 
 impl VerifyResult {
     fn pass() -> Self {
-        Self { result: GateResult::Pass, gate_number: 0, detail: String::new() }
+        Self {
+            result: GateResult::Pass,
+            gate_number: 0,
+            detail: String::new(),
+        }
     }
 
     fn fail(gate: u8, result: GateResult, detail: impl Into<String>) -> Self {
-        Self { result, gate_number: gate, detail: detail.into() }
+        Self {
+            result,
+            gate_number: gate,
+            detail: detail.into(),
+        }
     }
 }
 
 /// Thread-safe verifier.  Clone is cheap (Arc under the hood).
 #[derive(Clone)]
 pub struct Verifier {
-    registry:    Registry,
-    state:       Arc<Mutex<CounterState>>,
-    state_path:  PathBuf,
+    registry: Registry,
+    state: Arc<Mutex<CounterState>>,
+    state_path: PathBuf,
 }
 
 impl Verifier {
@@ -87,7 +95,7 @@ impl Verifier {
         let state = CounterState::load(&state_path);
         Self {
             registry,
-            state:      Arc::new(Mutex::new(state)),
+            state: Arc::new(Mutex::new(state)),
             state_path: state_path.as_ref().to_path_buf(),
         }
     }
@@ -104,7 +112,10 @@ impl Verifier {
             return VerifyResult::fail(
                 1,
                 GateResult::Gate1AgentNotAuthorized,
-                format!("agent_id={} not in registry", &hex::encode(receipt.agent_id)[..12]),
+                format!(
+                    "agent_id={} not in registry",
+                    &hex::encode(receipt.agent_id)[..12]
+                ),
             );
         }
 
@@ -113,7 +124,10 @@ impl Verifier {
             return VerifyResult::fail(
                 2,
                 GateResult::Gate2ModelNotApproved,
-                format!("model_hash={} not approved", &hex::encode(receipt.model_hash)[..12]),
+                format!(
+                    "model_hash={} not approved",
+                    &hex::encode(receipt.model_hash)[..12]
+                ),
             );
         }
 
@@ -181,24 +195,24 @@ use crate::crypto::{compute_execution_hash, compute_receipt_digest as _crd};
 /// Build a complete, correctly-signed receipt.
 /// Called by the miner after task execution.
 pub fn build_receipt(
-    agent_id:   &[u8; 32],
+    agent_id: &[u8; 32],
     model_hash: &[u8; 32],
     task_input: &str,
-    output:     &str,
-    counter:    u64,
-    tempo_id:   u64,
-    timestamp:  f64,
+    output: &str,
+    counter: u64,
+    tempo_id: u64,
+    timestamp: f64,
 ) -> Receipt {
     let execution_hash = compute_execution_hash(task_input, output, tempo_id, timestamp);
-    let digest         = compute_receipt_digest(agent_id, model_hash, &execution_hash, counter);
+    let digest = compute_receipt_digest(agent_id, model_hash, &execution_hash, counter);
 
     Receipt {
-        agent_id:       *agent_id,
-        model_hash:     *model_hash,
+        agent_id: *agent_id,
+        model_hash: *model_hash,
         execution_hash,
         counter,
         digest,
-        version:   1,
+        version: 1,
         timestamp,
         tempo_id,
     }
@@ -210,8 +224,8 @@ mod tests {
     use crate::registry::Registry;
 
     fn setup() -> (Verifier, [u8; 32], [u8; 32]) {
-        let reg        = Registry::new();
-        let agent_id   = [0x01u8; 32];
+        let reg = Registry::new();
+        let agent_id = [0x01u8; 32];
         let model_hash = [0x02u8; 32];
         reg.register_agent(&agent_id, "5TestHotkey", serde_json::Value::Null);
         reg.approve_model(&model_hash);
@@ -221,7 +235,15 @@ mod tests {
     }
 
     fn make_receipt(agent_id: &[u8; 32], model_hash: &[u8; 32], counter: u64) -> Receipt {
-        build_receipt(agent_id, model_hash, "task input", "output answer", counter, 100, 0.0)
+        build_receipt(
+            agent_id,
+            model_hash,
+            "task input",
+            "output answer",
+            counter,
+            100,
+            0.0,
+        )
     }
 
     #[test]
@@ -283,7 +305,12 @@ mod tests {
         ];
         let results = v.verify_batch(&receipts);
         for r in &results {
-            assert_eq!(r.result, GateResult::Pass, "batch item failed: {:?}", r.detail);
+            assert_eq!(
+                r.result,
+                GateResult::Pass,
+                "batch item failed: {:?}",
+                r.detail
+            );
         }
     }
 

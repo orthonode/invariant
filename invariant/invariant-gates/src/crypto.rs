@@ -32,8 +32,8 @@ pub fn sha256_2(a: &[u8], b: &[u8]) -> [u8; 32] {
 ///
 /// agent_id = SHA-256(hotkey_utf8 || model_hash || reg_block_be_u64)
 pub fn derive_software_agent_id(
-    hotkey_ss58:        &str,
-    model_hash:         &[u8; 32],
+    hotkey_ss58: &str,
+    model_hash: &[u8; 32],
     registration_block: u64,
 ) -> [u8; 32] {
     let mut h = Sha256::new();
@@ -70,9 +70,9 @@ pub fn hash_model_identifier(identifier: &str) -> [u8; 32] {
 /// Cannot be forged without running the computation on the given input.
 pub fn compute_execution_hash(
     task_input: &str,
-    output:     &str,
-    tempo_id:   u64,
-    timestamp:  f64,
+    output: &str,
+    tempo_id: u64,
+    timestamp: f64,
 ) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(task_input.as_bytes());
@@ -89,10 +89,10 @@ pub fn compute_execution_hash(
 /// Gate 4 recomputes this and compares.
 /// If ANY field was tampered with, the digest will not match.
 pub fn compute_receipt_digest(
-    agent_id:       &[u8; 32],
-    model_hash:     &[u8; 32],
+    agent_id: &[u8; 32],
+    model_hash: &[u8; 32],
     execution_hash: &[u8; 32],
-    counter:        u64,
+    counter: u64,
 ) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(agent_id);
@@ -140,9 +140,9 @@ mod tests {
 
     #[test]
     fn digest_binds_all_fields() {
-        let agent   = [1u8; 32];
-        let model   = [2u8; 32];
-        let exec    = [3u8; 32];
+        let agent = [1u8; 32];
+        let model = [2u8; 32];
+        let exec = [3u8; 32];
         let d1 = compute_receipt_digest(&agent, &model, &exec, 1);
         let d2 = compute_receipt_digest(&agent, &model, &exec, 2); // counter changed
         assert_ne!(d1, d2);
@@ -151,9 +151,9 @@ mod tests {
     /// Known-answer test: SHA-256("") = e3b0c4...
     #[test]
     fn sha256_known_answer() {
-        let expected = hex::decode(
-            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-        ).unwrap();
+        let expected =
+            hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+                .unwrap();
         let got = sha256(b"");
         assert_eq!(&got[..], &expected[..]);
     }

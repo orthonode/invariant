@@ -2,17 +2,16 @@
 // Run: cargo bench --features python-ext
 // (python-ext not strictly needed for bench, but builds the full crate)
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 use invariant_gates::{
-    Registry, Verifier, build_receipt,
-    derive_software_agent_id, hash_model_identifier,
+    build_receipt, derive_software_agent_id, hash_model_identifier, Registry, Verifier,
 };
 
 fn setup_verifier() -> (Verifier, [u8; 32], [u8; 32]) {
-    let registry   = Registry::new();
+    let registry = Registry::new();
     let model_hash = hash_model_identifier("bench-model-v1");
-    let agent_id   = derive_software_agent_id("5BenchHotkey", &model_hash, 1000);
+    let agent_id = derive_software_agent_id("5BenchHotkey", &model_hash, 1000);
 
     registry.register_agent(&agent_id, "5BenchHotkey", serde_json::Value::Null);
     registry.approve_model(&model_hash);
@@ -90,9 +89,7 @@ fn bench_batch_32(c: &mut Criterion) {
             base_counter += 1;
             let receipts: Vec<_> = agents
                 .iter()
-                .map(|(a, m)| {
-                    build_receipt(a, m, "task input", "output", base_counter, 100, 0.0)
-                })
+                .map(|(a, m)| build_receipt(a, m, "task input", "output", base_counter, 100, 0.0))
                 .collect();
             black_box(batch_verifier.verify_batch(&receipts))
         })
@@ -109,7 +106,11 @@ fn bench_batch_scaling(c: &mut Criterion) {
         for i in 0..size {
             let m = hash_model_identifier(&format!("scale-model-{size}-{i}"));
             let a = derive_software_agent_id(&format!("5ScaleHotkey{size}{i}"), &m, 1000);
-            registry.register_agent(&a, &format!("5ScaleHotkey{size}{i}"), serde_json::Value::Null);
+            registry.register_agent(
+                &a,
+                &format!("5ScaleHotkey{size}{i}"),
+                serde_json::Value::Null,
+            );
             registry.approve_model(&m);
             agents.push((a, m));
         }

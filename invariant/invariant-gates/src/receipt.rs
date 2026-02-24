@@ -19,19 +19,19 @@ use serde::{Deserialize, Serialize};
 ///   TOTAL          136 bytes
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Receipt {
-    pub agent_id:       [u8; 32],
-    pub model_hash:     [u8; 32],
+    pub agent_id: [u8; 32],
+    pub model_hash: [u8; 32],
     pub execution_hash: [u8; 32],
-    pub counter:        u64,
-    pub digest:         [u8; 32],
+    pub counter: u64,
+    pub digest: [u8; 32],
 
     // ── Metadata (not included in digest) ───────────────────────
     #[serde(default)]
-    pub version:    u8,
+    pub version: u8,
     #[serde(default)]
-    pub timestamp:  f64,
+    pub timestamp: f64,
     #[serde(default)]
-    pub tempo_id:   u64,
+    pub tempo_id: u64,
 }
 
 impl Receipt {
@@ -48,10 +48,10 @@ impl Receipt {
 
     /// Deserialise from 136 bytes.
     pub fn from_bytes(b: &[u8; 136]) -> Self {
-        let mut agent_id       = [0u8; 32];
-        let mut model_hash     = [0u8; 32];
+        let mut agent_id = [0u8; 32];
+        let mut model_hash = [0u8; 32];
         let mut execution_hash = [0u8; 32];
-        let mut digest         = [0u8; 32];
+        let mut digest = [0u8; 32];
 
         agent_id.copy_from_slice(&b[0..32]);
         model_hash.copy_from_slice(&b[32..64]);
@@ -65,9 +65,9 @@ impl Receipt {
             execution_hash,
             counter,
             digest,
-            version:   1,
+            version: 1,
             timestamp: 0.0,
-            tempo_id:  0,
+            tempo_id: 0,
         }
     }
 }
@@ -75,27 +75,27 @@ impl Receipt {
 /// JSON-serialisable form used for transport over Axon (hex strings).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceiptJson {
-    pub version:        u8,
-    pub agent_id:       String,   // hex
-    pub model_hash:     String,   // hex
-    pub execution_hash: String,   // hex
-    pub counter:        u64,
-    pub digest:         String,   // hex
-    pub timestamp:      f64,
-    pub tempo_id:       u64,
+    pub version: u8,
+    pub agent_id: String,       // hex
+    pub model_hash: String,     // hex
+    pub execution_hash: String, // hex
+    pub counter: u64,
+    pub digest: String, // hex
+    pub timestamp: f64,
+    pub tempo_id: u64,
 }
 
 impl ReceiptJson {
     pub fn from_receipt(r: &Receipt) -> Self {
         Self {
-            version:        r.version,
-            agent_id:       hex::encode(r.agent_id),
-            model_hash:     hex::encode(r.model_hash),
+            version: r.version,
+            agent_id: hex::encode(r.agent_id),
+            model_hash: hex::encode(r.model_hash),
             execution_hash: hex::encode(r.execution_hash),
-            counter:        r.counter,
-            digest:         hex::encode(r.digest),
-            timestamp:      r.timestamp,
-            tempo_id:       r.tempo_id,
+            counter: r.counter,
+            digest: hex::encode(r.digest),
+            timestamp: r.timestamp,
+            tempo_id: r.tempo_id,
         }
     }
 
@@ -107,14 +107,14 @@ impl ReceiptJson {
             Ok(arr)
         };
         Ok(Receipt {
-            agent_id:       decode32(&self.agent_id)?,
-            model_hash:     decode32(&self.model_hash)?,
+            agent_id: decode32(&self.agent_id)?,
+            model_hash: decode32(&self.model_hash)?,
             execution_hash: decode32(&self.execution_hash)?,
-            counter:        self.counter,
-            digest:         decode32(&self.digest)?,
-            version:        self.version,
-            timestamp:      self.timestamp,
-            tempo_id:       self.tempo_id,
+            counter: self.counter,
+            digest: decode32(&self.digest)?,
+            version: self.version,
+            timestamp: self.timestamp,
+            tempo_id: self.tempo_id,
         })
     }
 }
@@ -138,12 +138,12 @@ impl GateResult {
     /// Human-readable code (used by Python side for OAP violation mapping).
     pub fn code(&self) -> &'static str {
         match self {
-            GateResult::Pass                     => "PASS",
-            GateResult::Gate1AgentNotAuthorized  => "GATE1_AGENT_NOT_AUTHORIZED",
-            GateResult::Gate2ModelNotApproved    => "GATE2_MODEL_NOT_APPROVED",
-            GateResult::Gate3ReplayDetected      => "GATE3_REPLAY_DETECTED",
-            GateResult::Gate4DigestMismatch      => "GATE4_DIGEST_MISMATCH",
-            GateResult::ParseError(_)            => "PARSE_ERROR",
+            GateResult::Pass => "PASS",
+            GateResult::Gate1AgentNotAuthorized => "GATE1_AGENT_NOT_AUTHORIZED",
+            GateResult::Gate2ModelNotApproved => "GATE2_MODEL_NOT_APPROVED",
+            GateResult::Gate3ReplayDetected => "GATE3_REPLAY_DETECTED",
+            GateResult::Gate4DigestMismatch => "GATE4_DIGEST_MISMATCH",
+            GateResult::ParseError(_) => "PARSE_ERROR",
         }
     }
 }
@@ -155,38 +155,38 @@ mod tests {
     #[test]
     fn round_trip_bytes() {
         let r = Receipt {
-            agent_id:       [1u8; 32],
-            model_hash:     [2u8; 32],
+            agent_id: [1u8; 32],
+            model_hash: [2u8; 32],
             execution_hash: [3u8; 32],
-            counter:        42,
-            digest:         [4u8; 32],
-            version:        1,
-            timestamp:      0.0,
-            tempo_id:       100,
+            counter: 42,
+            digest: [4u8; 32],
+            version: 1,
+            timestamp: 0.0,
+            tempo_id: 100,
         };
         let bytes = r.to_bytes();
         assert_eq!(bytes.len(), 136);
         let r2 = Receipt::from_bytes(&bytes);
-        assert_eq!(r.agent_id,   r2.agent_id);
-        assert_eq!(r.counter,    r2.counter);
-        assert_eq!(r.digest,     r2.digest);
+        assert_eq!(r.agent_id, r2.agent_id);
+        assert_eq!(r.counter, r2.counter);
+        assert_eq!(r.digest, r2.digest);
     }
 
     #[test]
     fn round_trip_json() {
         let r = Receipt {
-            agent_id:       [0xABu8; 32],
-            model_hash:     [0xCDu8; 32],
+            agent_id: [0xABu8; 32],
+            model_hash: [0xCDu8; 32],
             execution_hash: [0xEFu8; 32],
-            counter:        999,
-            digest:         [0x12u8; 32],
-            version:        1,
-            timestamp:      1_700_000_000.0,
-            tempo_id:       50,
+            counter: 999,
+            digest: [0x12u8; 32],
+            version: 1,
+            timestamp: 1_700_000_000.0,
+            tempo_id: 50,
         };
-        let j  = ReceiptJson::from_receipt(&r);
+        let j = ReceiptJson::from_receipt(&r);
         let r2 = j.to_receipt().unwrap();
         assert_eq!(r.agent_id, r2.agent_id);
-        assert_eq!(r.counter,  r2.counter);
+        assert_eq!(r.counter, r2.counter);
     }
 }

@@ -18,8 +18,8 @@ pub mod registry;
 pub mod verifier;
 
 pub use crypto::{
-    compute_execution_hash, compute_receipt_digest,
-    derive_hardware_agent_id, derive_software_agent_id, hash_model_identifier,
+    compute_execution_hash, compute_receipt_digest, derive_hardware_agent_id,
+    derive_software_agent_id, hash_model_identifier,
 };
 pub use receipt::{GateResult, Receipt, ReceiptJson};
 pub use registry::Registry;
@@ -29,12 +29,12 @@ pub use verifier::{build_receipt, Verifier, VerifyResult};
 
 #[cfg(feature = "python-ext")]
 mod python {
-    use pyo3::prelude::*;
     use pyo3::exceptions::PyValueError;
+    use pyo3::prelude::*;
 
     use crate::crypto::{
-        compute_execution_hash, compute_receipt_digest,
-        derive_hardware_agent_id, derive_software_agent_id, hash_model_identifier,
+        compute_execution_hash, compute_receipt_digest, derive_hardware_agent_id,
+        derive_software_agent_id, hash_model_identifier,
     };
     use crate::receipt::{GateResult, Receipt, ReceiptJson};
     use crate::registry::Registry;
@@ -57,7 +57,9 @@ mod python {
         #[new]
         fn new(registry_path: &str, state_path: &str) -> Self {
             let registry = Registry::from_file(registry_path);
-            PyVerifier { inner: Verifier::new(registry, state_path) }
+            PyVerifier {
+                inner: Verifier::new(registry, state_path),
+            }
         }
 
         /// Verify a JSON-encoded receipt.
@@ -65,7 +67,8 @@ mod python {
         fn verify_json(&self, receipt_json: &str) -> PyResult<String> {
             let rj: ReceiptJson = serde_json::from_str(receipt_json)
                 .map_err(|e| PyValueError::new_err(format!("parse error: {e}")))?;
-            let receipt = rj.to_receipt()
+            let receipt = rj
+                .to_receipt()
                 .map_err(|e| PyValueError::new_err(format!("hex decode error: {e}")))?;
             let vr = self.inner.verify(&receipt);
             let out = serde_json::json!({
@@ -83,16 +86,21 @@ mod python {
                 .map_err(|e| PyValueError::new_err(format!("parse error: {e}")))?;
             let receipts: Vec<Receipt> = rjs
                 .into_iter()
-                .map(|rj| rj.to_receipt().map_err(|e| PyValueError::new_err(e.to_string())))
+                .map(|rj| {
+                    rj.to_receipt()
+                        .map_err(|e| PyValueError::new_err(e.to_string()))
+                })
                 .collect::<PyResult<_>>()?;
             let results = self.inner.verify_batch(&receipts);
             let out: Vec<_> = results
                 .iter()
-                .map(|vr| serde_json::json!({
-                    "result":      vr.result.code(),
-                    "gate_number": vr.gate_number,
-                    "detail":      vr.detail,
-                }))
+                .map(|vr| {
+                    serde_json::json!({
+                        "result":      vr.result.code(),
+                        "gate_number": vr.gate_number,
+                        "detail":      vr.detail,
+                    })
+                })
                 .collect();
             Ok(serde_json::to_string(&out).unwrap())
         }
@@ -102,7 +110,9 @@ mod python {
             let bytes = hex::decode(agent_id_hex)
                 .map_err(|e| PyValueError::new_err(format!("hex: {e}")))?;
             if bytes.len() != 32 {
-                return Err(PyValueError::new_err("agent_id must be 32 bytes (64 hex chars)"));
+                return Err(PyValueError::new_err(
+                    "agent_id must be 32 bytes (64 hex chars)",
+                ));
             }
             let mut arr = [0u8; 32];
             arr.copy_from_slice(&bytes);
@@ -116,8 +126,8 @@ mod python {
     /// Returns 64-character hex string.
     #[pyfunction]
     fn py_derive_software_agent_id(
-        hotkey_ss58:        &str,
-        model_hash_hex:     &str,
+        hotkey_ss58: &str,
+        model_hash_hex: &str,
         registration_block: u64,
     ) -> PyResult<String> {
         let bytes = hex::decode(model_hash_hex)
@@ -134,9 +144,9 @@ mod python {
     /// Derive DePIN hardware miner agent_id (Keccak-256).
     #[pyfunction]
     fn py_derive_hardware_agent_id(efuse_mac_hex: &str, chip_model_hex: &str) -> PyResult<String> {
-        let mac   = hex::decode(efuse_mac_hex)
+        let mac = hex::decode(efuse_mac_hex)
             .map_err(|e| PyValueError::new_err(format!("efuse_mac hex: {e}")))?;
-        let chip  = hex::decode(chip_model_hex)
+        let chip = hex::decode(chip_model_hex)
             .map_err(|e| PyValueError::new_err(format!("chip_model hex: {e}")))?;
         Ok(hex::encode(derive_hardware_agent_id(&mac, &chip)))
     }
@@ -152,17 +162,16 @@ mod python {
     #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn py_build_receipt(
-        agent_id_hex:   &str,
+        agent_id_hex: &str,
         model_hash_hex: &str,
-        task_input:     &str,
-        output:         &str,
-        counter:        u64,
-        tempo_id:       u64,
-        timestamp:      f64,
+        task_input: &str,
+        output: &str,
+        counter: u64,
+        tempo_id: u64,
+        timestamp: f64,
     ) -> PyResult<String> {
         let decode32 = |s: &str| -> PyResult<[u8; 32]> {
-            let v = hex::decode(s)
-                .map_err(|e| PyValueError::new_err(format!("hex: {e}")))?;
+            let v = hex::decode(s).map_err(|e| PyValueError::new_err(format!("hex: {e}")))?;
             if v.len() != 32 {
                 return Err(PyValueError::new_err("expected 32-byte field"));
             }
@@ -170,12 +179,16 @@ mod python {
             arr.copy_from_slice(&v);
             Ok(arr)
         };
-        let agent_id   = decode32(agent_id_hex)?;
+        let agent_id = decode32(agent_id_hex)?;
         let model_hash = decode32(model_hash_hex)?;
         let receipt = build_receipt(
-            &agent_id, &model_hash,
-            task_input, output,
-            counter, tempo_id, timestamp,
+            &agent_id,
+            &model_hash,
+            task_input,
+            output,
+            counter,
+            tempo_id,
+            timestamp,
         );
         let rj = ReceiptJson::from_receipt(&receipt);
         Ok(serde_json::to_string(&rj).unwrap())
