@@ -222,6 +222,21 @@ pub fn build_receipt(
 mod tests {
     use super::*;
     use crate::registry::Registry;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// Global counter to give every test its own state-file path, preventing
+    /// parallel tests from sharing counter state and triggering Gate 3 false
+    /// positives.
+    static TEST_ID: AtomicU64 = AtomicU64::new(0);
+
+    fn unique_state_path() -> PathBuf {
+        let id = TEST_ID.fetch_add(1, Ordering::SeqCst);
+        std::env::temp_dir().join(format!(
+            "invariant_test_state_{}_{}.json",
+            std::process::id(),
+            id
+        ))
+    }
 
     fn setup() -> (Verifier, [u8; 32], [u8; 32]) {
         let reg = Registry::new();
@@ -230,7 +245,7 @@ mod tests {
         reg.register_agent(&agent_id, "5TestHotkey", serde_json::Value::Null);
         reg.approve_model(&model_hash);
 
-        let verifier = Verifier::new(reg, "/tmp/invariant_test_state.json");
+        let verifier = Verifier::new(reg, unique_state_path());
         (verifier, agent_id, model_hash)
     }
 
