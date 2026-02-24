@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
-use invariant_gates::{
+use invariant_gates_rs::{
     build_receipt, derive_software_agent_id, hash_model_identifier, Registry, Verifier,
 };
 
@@ -69,7 +69,7 @@ fn bench_gate1_fail(c: &mut Criterion) {
 
 /// Benchmark batch verification: 32 receipts (one subnet tempo).
 fn bench_batch_32(c: &mut Criterion) {
-    let (verifier, agent_id, model_hash) = setup_verifier();
+    let (_verifier, _agent_id, _model_hash) = setup_verifier();
 
     // Use different agents for batch so counters don't conflict
     let registry = Registry::new();

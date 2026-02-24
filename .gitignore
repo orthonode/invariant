@@ -5,6 +5,22 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────────────────────
+# INTERNAL DOCUMENTS — never publish planning/debug/execution internals
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Word / Office planning docs
+INVARIANT_*.docx
+*.docx
+
+# Internal debug and status reports
+INVARIANT_DEBUG_REPORT.md
+*_DEBUG_REPORT.md
+
+# Local subtensor checkout — large Rust workspace, not part of this repo
+subtensor/
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CRITICAL SECURITY — NEVER COMMIT THESE
 # ─────────────────────────────────────────────────────────────────────────────
 

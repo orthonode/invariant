@@ -1,19 +1,19 @@
 <div align="center">
 
 ```
-██ ███  ██  ██  ████  ██████  ████  ███  ██  ████
-██  █  ██  ██  ██  ██   ██   ██  ██  █  ██  ██  ██
-██  █  ██  ██  ████     ██   ████    █  ██  ██  ██
-██  █   ████   ██  ██   ██   ██  ██  █  ██  ██  ██
-██ ███   ██    ██  ██   ██   ████   ███  ██  ████
+ _____ _   _ _   _  ___  ______ _____  ___   _   _ _____
+|_   _| \ | | | | |/ _ \ | ___ \_   _|/ _ \ | \ | |_   _|
+  | | |  \| | | | / /_\ \| |_/ / | | / /_\ \|  \| | | |
+  | | | . ` | | | |  _  ||    /  | | |  _  || . ` | | |
+ _| |_| |\  \ \_/ / | | || |\ \ _| |_| | | || |\  | | |
+ \___/\_| \_/\___/\_| |_/\_| \_|\___/\_| |_/\_| \_/ \_/
 ```
-
-# INVARIANT
 
 **Deterministic Trust Infrastructure for Bittensor**
 
 *by [Orthonode Infrastructure Labs](https://orthonode.xyz)*
 
+[![CI](https://github.com/orthonode/invariant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/orthonode/invariant/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](LICENSE)
 [![Bittensor](https://img.shields.io/badge/Bittensor-Subnet-7B2D8B)](https://bittensor.com)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
