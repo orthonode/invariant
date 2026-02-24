@@ -1,0 +1,44 @@
+[build-system]
+requires      = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[tool.pytest.ini_options]
+# Only discover tests inside the invariant test directory.
+# Exclude scripts/ (they are runnable scripts, not pytest modules).
+testpaths     = ["invariant/invariant/tests"]
+norecursedirs = ["scripts", "subtensor", "venv", "seed-phrase", ".git",
+                 "__pycache__", "invariant/invariant-gates",
+                 "invariant/phase1_bittensor", "invariant/phase1_core"]
+python_files  = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[project]
+name        = "invariant-gates-rs"
+version     = "0.1.0"
+description = "INVARIANT four-gate cryptographic receipt verification (Rust/PyO3)"
+requires-python = ">=3.9"
+license     = { text = "MIT" }
+
+# PyPI classifiers
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[tool.maturin]
+# The Rust crate to build
+manifest-path    = "invariant-gates/Cargo.toml"
+
+# Activate the pyo3 extension-module feature
+features         = ["python-ext"]
+
+# Where the .so lands after `maturin develop`
+# Python will find it as: import invariant_gates_rs
+module-name      = "invariant_gates_rs"
+
+# Include Python source files in the wheel
+python-source    = "invariant"
+
+# Bittensor runs on Python 3.9+; support all stable ABIs
+bindings         = "pyo3"

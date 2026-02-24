@@ -1,0 +1,357 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# INVARIANT — .gitignore
+# Deterministic Trust Infrastructure for Bittensor
+# by Orthonode Infrastructure Labs · orthonode.xyz
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CRITICAL SECURITY — NEVER COMMIT THESE
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Seed phrases / mnemonics — ABSOLUTE NEVER
+seed-phrase/
+seed-phrase/**
+**/seed-phrase/
+**/seed-phrase/**
+*.seed
+*.mnemonic
+mnemonic.txt
+seed.txt
+
+# Bittensor wallets (contain private keys)
+.bittensor/
+**/.bittensor/
+wallets_*.json
+wallet_*.json
+hotkeys/
+coldkeys/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+.env.production
+*.secret
+secrets.json
+secrets.yaml
+secrets.yml
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INVARIANT RUNTIME DATA — DO NOT COMMIT
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Miner and validator data directories
+miner_data/
+validator_data/
+invariant_miner_data/
+invariant_validator_data/
+node_data/
+
+# Gate state — counter state is security-sensitive
+invariant_state.json
+gate_state.json
+*.state.json
+
+# OAP ledgers — behavioral history (can be large, node-specific)
+oap_ledgers.json
+oap.json
+*.oap.json
+
+# Registry — validator-specific, not shared
+invariant_registry.json
+registry.json
+*.registry.json
+
+# Miner identity (contains agent_id bound to hotkey)
+identity.json
+miner_identity.json
+
+# Counter state (security-sensitive for Gate 3)
+counter.json
+miner_counter.json
+
+# Backup files
+*.json.bak
+*.json.backup
+registry.json.bak
+oap_ledgers.json.bak
+gate_state.json.bak
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PYTHON
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions (compiled Rust extension .so files)
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdid/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.env/
+pyenv/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyTest
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytype
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Spyder
+.spyderproject.db
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs
+/site
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RUST
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Build output
+target/
+
+# Cargo lock (we keep Cargo.lock for binaries, not for libraries)
+# Uncomment if this is a library crate:
+# Cargo.lock
+
+# Rust debug symbols
+*.pdb
+
+# maturin build artifacts
+*.whl
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IDE AND EDITOR
+# ─────────────────────────────────────────────────────────────────────────────
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains / PyCharm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+.netrwhist
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
+
+# TextMate
+*.tmproj
+*.tmproject
+tmtags
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OPERATING SYSTEM
+# ─────────────────────────────────────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LOGS AND TEMPORARY FILES
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Log files
+*.log
+logs/
+*.log.*
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.swp
+tmp/
+temp/
+
+# Cache
+.cache/
+cache/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BITTENSOR SPECIFIC
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Local subtensor build (large, not needed in repo)
+subtensor/target/
+subtensor/.cargo/
+
+# Bittensor test data
+testdata/
+test_wallets/
+
+# NETUID tracking file (local only)
+.netuid
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOCUMENTATION BUILD ARTIFACTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sphinx / MkDocs
+docs/_build/
+docs/site/
+_build/
+site/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MISCELLANEOUS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Compressed archives (should be distributed via releases, not committed)
+*.zip
+*.tar.gz
+*.tgz
+*.tar.bz2
+*.tar.xz
+*.7z
+*.rar
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js (if any tooling uses it)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+htmlcov/
+*.cover
+coverage/
+
+# Profiling
+*.prof
+*.pstats

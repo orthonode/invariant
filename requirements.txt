@@ -1,0 +1,24 @@
+# INVARIANT — Python dependencies
+# Install: pip install -r requirements.txt
+
+# ── Bittensor ────────────────────────────────────────────────────
+bittensor>=9.12.0
+
+# ── Numerics ─────────────────────────────────────────────────────
+numpy>=1.24.0
+
+# ── Keccak-256 for DePIN hardware identity ───────────────────────
+# Provides SHA3/Keccak.  Rust crate uses tiny-keccak natively —
+# this is only needed by the pure Python fallback path.
+pysha3>=1.0.2
+
+# ── Phase 3 cross-subnet API ─────────────────────────────────────
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+
+# ── Rust/Python build tooling (developer machines only) ──────────
+# Uncomment to enable `maturin develop`:
+# maturin>=1.4.0
+
+# ── Dev / test ───────────────────────────────────────────────────
+pytest>=7.0

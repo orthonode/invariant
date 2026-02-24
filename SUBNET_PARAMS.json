@@ -1,0 +1,61 @@
+{
+  "subnet_name": "INVARIANT",
+  "description": "Deterministic Trust Infrastructure for Bittensor - Cryptographically-verified trust scoring via four-gate receipt verification",
+  "github_url": "https://github.com/orthonode/invariant",
+  "subnet_params": {
+    "tempo": 100,
+    "immunity_period": 4096,
+    "min_allowed_weights": 8,
+    "max_weight_limit": 454,
+    "adjustment_alpha": 0.1,
+    "founder_share": 0.12,
+    "max_regs_per_block": 2,
+    "min_burn": 1000,
+    "max_burn": 100000000
+  },
+  "network_config": {
+    "registration_timeout": 300,
+    "submission_window_blocks": 12,
+    "max_tasks_per_tempo": 64,
+    "task_timeout_blocks": 6
+  },
+  "trust_config": {
+    "nts_initial_score": 50.0,
+    "nts_max_score": 100.0,
+    "nts_recovery_per_tempo": 0.3,
+    "nts_catastrophic_threshold": 5,
+    "nts_violation_decay": 0.95
+  },
+  "gate_config": {
+    "counter_rollback_penalty": "GATE3_REPLAY_DETECTED",
+    "digest_mismatch_penalty": "GATE4_DIGEST_MISMATCH",
+    "unauthorized_agent_penalty": "GATE1_AGENT_NOT_AUTHORIZED",
+    "unapproved_model_penalty": "GATE2_MODEL_NOT_APPROVED"
+  },
+  "task_types": [
+    {
+      "name": "hash",
+      "description": "SHA-256 hash computation",
+      "verification": "deterministic",
+      "weight": 1.0
+    },
+    {
+      "name": "math",
+      "description": "Mathematical proofs and computations",
+      "verification": "deterministic",
+      "weight": 1.0
+    },
+    {
+      "name": "logic",
+      "description": "Logical deduction problems",
+      "verification": "deterministic",
+      "weight": 1.0
+    },
+    {
+      "name": "code",
+      "description": "Code generation with test verification",
+      "verification": "deterministic",
+      "weight": 1.0
+    }
+  ]
+}

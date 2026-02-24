@@ -1,0 +1,51 @@
+[package]
+name        = "invariant-gates"
+version     = "0.1.0"
+edition     = "2021"
+description = "INVARIANT four-gate cryptographic receipt verification engine"
+authors     = ["Orthonode Labs"]
+license     = "MIT"
+
+# When built as a Python extension (maturin develop / maturin build)
+[lib]
+name    = "invariant_gates_rs"
+crate-type = ["cdylib", "rlib"]
+# cdylib  → .so/.pyd Python extension module
+# rlib    → static lib for use in pure-Rust tests and benchmarks
+
+[dependencies]
+# SHA-256 — receipt digest + software identity
+sha2 = "0.10"
+
+# Keccak-256 — DePIN hardware identity (Ethereum-compatible)
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+
+# Serialisation
+serde       = { version = "1.0", features = ["derive"] }
+serde_json  = "1.0"
+
+# Python bindings — only compiled when the pyo3 feature is active
+# maturin activates this automatically; pure-Rust builds skip it
+pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
+
+# Hex encoding/decoding for Python ↔ Rust byte interchange
+hex = "0.4"
+
+[features]
+default    = []
+python-ext = ["pyo3"]   # maturin passes --features python-ext automatically
+
+# ── Benchmark harness ────────────────────────────────────────────
+[[bench]]
+name    = "gate_bench"
+harness = false          # uses criterion
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# ── Build profile: release must be fast ─────────────────────────
+[profile.release]
+opt-level   = 3
+lto         = true
+codegen-units = 1
+panic       = "abort"    # smaller binary, no unwinding overhead
