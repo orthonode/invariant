@@ -190,7 +190,7 @@ impl Verifier {
 
 // ─── Receipt builder (miner side) ────────────────────────────────
 
-use crate::crypto::{compute_execution_hash, compute_receipt_digest as _crd};
+use crate::crypto::compute_execution_hash;
 
 /// Build a complete, correctly-signed receipt.
 /// Called by the miner after task execution.

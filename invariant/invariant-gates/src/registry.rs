@@ -93,8 +93,7 @@ impl Registry {
             agents: inner.meta.clone(),
             models: inner.models.iter().cloned().collect(),
         };
-        let json = serde_json::to_string_pretty(&file)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(&file).map_err(std::io::Error::other)?;
         fs::write(path, json)
     }
 

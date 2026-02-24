@@ -8,9 +8,9 @@ bittensor>=9.12.0
 numpy>=1.24.0
 
 # ── Keccak-256 for DePIN hardware identity ───────────────────────
-# Provides SHA3/Keccak.  Rust crate uses tiny-keccak natively —
-# this is only needed by the pure Python fallback path.
-pysha3>=1.0.2
+# Python 3.6+ includes sha3/keccak in the standard library hashlib.
+# pysha3 is NOT needed — hashlib.sha3_256() is available natively.
+# The Rust crate uses tiny-keccak directly (no Python dependency).
 
 # ── Phase 3 cross-subnet API ─────────────────────────────────────
 fastapi>=0.100.0
