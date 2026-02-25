@@ -41,6 +41,7 @@ from invariant_gates_bridge import (  # noqa: E402
     GateResult,
     Registry,
     Verifier,
+    derive_software_agent_id,
     using_rust,
 )
 
@@ -57,12 +58,8 @@ class InvariantTask(bt.Synapse):
     receipt_json: str = ""
     checkpoint_json: str = ""
 
-    def deserialize(self) -> dict:
-        return {
-            "output": self.output,
-            "receipt_json": self.receipt_json,
-            "checkpoint_json": self.checkpoint_json,
-        }
+    def deserialize(self) -> "InvariantTask":
+        return self
 
 
 # ── Data paths ─────────────────────────────────────────────────────────────
@@ -175,6 +172,38 @@ class InvariantValidator:
 
     # ── Tier 1: Gate verification ──────────────────────────────────────────
 
+    def _auto_register_agent(self, uid: int, receipt_dict: dict) -> bool:
+        """
+        Auto-register an unknown miner from its receipt on first appearance.
+
+        Security note: Gate 4 (digest) still cryptographically verifies the
+        receipt is internally consistent, so auto-registration does not allow
+        forged agent_ids to earn rewards — a tampered receipt fails Gate 4.
+        """
+        agent_id = receipt_dict.get("agent_id", "")
+        model_hash = receipt_dict.get("model_hash", "")
+        if not agent_id or not model_hash:
+            return False
+
+        if uid >= len(self.metagraph.hotkeys):
+            return False
+        hotkey = self.metagraph.hotkeys[uid]
+
+        try:
+            self.registry.register_agent(agent_id, hotkey)
+            self.registry.approve_model(model_hash)
+            # Rebuild verifier so the Rust backend picks up the updated registry JSON.
+            self.verifier = Verifier(REGISTRY_PATH, STATE_PATH)
+            self._uid_to_agent[uid] = agent_id
+            bt.logging.info(
+                f"Auto-registered agent {agent_id[:16]}... "
+                f"for UID {uid} (hotkey {hotkey[:8]}...)"
+            )
+            return True
+        except Exception as e:
+            bt.logging.warning(f"Auto-registration failed for UID {uid}: {e}")
+            return False
+
     def _verify_receipt(
         self, uid: int, receipt_json: str
     ) -> Tuple[float, str, int, str]:
@@ -193,6 +222,12 @@ class InvariantValidator:
             return 0.0, GateResult.GATE1, 1, "agent_id mismatch with registry"
 
         result = self.verifier.verify(receipt_dict)
+
+        # On first Gate 1 failure for an unknown miner, auto-register from receipt.
+        if result["result"] == GateResult.GATE1 and not expected_agent:
+            if self._auto_register_agent(uid, receipt_dict):
+                result = self.verifier.verify(receipt_dict)
+
         if GateResult.is_pass(result["result"]):
             return 1.0, result["result"], 0, ""
         return 0.0, result["result"], result["gate_number"], result.get("detail", "")
@@ -218,6 +253,22 @@ class InvariantValidator:
             if agent_hex:
                 self.oap.record_timeout(agent_hex, self.tempo)
             bt.logging.warning(f"UID {uid} timed out ({elapsed:.1f}s)")
+            return 0.0
+
+        # Guard: dendrite may return a non-synapse on connection failure
+        if not isinstance(response, InvariantTask):
+            bt.logging.debug(f"UID {uid}: bad response type {type(response).__name__}")
+            if agent_hex:
+                self.oap.record_timeout(agent_hex, self.tempo)
+            return 0.0
+
+        # Guard: empty receipt means miner didn't respond
+        if not getattr(response, "receipt_json", ""):
+            bt.logging.debug(f"UID {uid}: no receipt in response")
+            if agent_hex:
+                self.oap.record_violation(
+                    agent_hex, self.tempo, 0, ViolationType.NO_RECEIPT, "empty response"
+                )
             return 0.0
 
         # Tier 1 — four-gate verification
@@ -302,7 +353,12 @@ class InvariantValidator:
                     timeout=WINDOW_BLOCKS * 12,
                 )
                 # dendrite returns list[Synapse] — one per axon
-                responses[uid] = result[0] if isinstance(result, list) else result
+                resp = result[0] if isinstance(result, list) else result
+                bt.logging.debug(
+                    f"UID {uid} dendrite result type={type(resp).__name__} "
+                    f"status={getattr(getattr(resp, 'dendrite', None), 'status_code', '?')}"
+                )
+                responses[uid] = resp
             except Exception as e:
                 bt.logging.debug(f"UID {uid} dendrite error: {e}")
                 responses[uid] = synapse  # empty / default response

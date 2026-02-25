@@ -10,8 +10,10 @@ Usage (from project root):
         --wallet.hotkey default \
         --netuid 1 \
         --subtensor.network local \
-        --subtensor.chain_endpoint ws://127.0.0.1:9944 \
         --axon.port 8091
+
+    The miner auto-detects its LAN IP for axon registration.
+    Override with --axon.external_ip X.X.X.X if needed.
 
 Register first (local dev):
     python instant_register.py
@@ -19,10 +21,13 @@ Register first (local dev):
 
 import argparse
 import json
+import socket
+import subprocess
 import sys
 import time
 import traceback
 from pathlib import Path
+from typing import Tuple
 
 import bittensor as bt
 
@@ -42,6 +47,57 @@ from invariant_gates_bridge import (  # noqa: E402
 )
 
 from invariant_oap import OAPEngine  # noqa: E402
+
+
+# ── LAN IP detection ──────────────────────────────────────────────
+
+
+def _detect_lan_ip() -> str:
+    """Return first non-loopback, non-Docker LAN IP, or empty string on failure."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+    # Fallback: parse `ip addr show`
+    try:
+        out = subprocess.check_output(["ip", "addr", "show"], text=True, timeout=3)
+        for line in out.splitlines():
+            line = line.strip()
+            if not line.startswith("inet "):
+                continue
+            ip = line.split()[1].split("/")[0]
+            # Skip loopback and Docker bridge ranges
+            if not any(ip.startswith(pfx) for pfx in ("127.", "172.17.", "172.18.", "172.16.")):
+                return ip
+    except Exception:
+        pass
+    return ""
+
+
+def _ensure_external_ip(config: bt.Config) -> None:
+    """
+    If the user did not supply a valid --axon.external_ip, auto-detect the
+    LAN IP and set it.  The Bittensor chain rejects 127.0.0.1 (loopback) so
+    we must resolve to an actual interface address before serve_axon.
+    """
+    current = getattr(config.axon, "external_ip", None) or ""
+    if current and not current.startswith("127.") and current != "0.0.0.0":
+        return  # user provided a valid IP — honour it
+    detected = _detect_lan_ip()
+    if detected:
+        config.axon.external_ip = detected
+        bt.logging.info(f"Auto-detected axon external_ip: {detected}")
+    else:
+        bt.logging.warning(
+            "Could not detect a non-loopback IP. "
+            "serve_axon may fail — pass --axon.external_ip manually."
+        )
+
 
 # ── Data paths ────────────────────────────────────────────────────
 DATA = Path("./miner_data")
@@ -86,12 +142,8 @@ class InvariantTask(bt.Synapse):
     receipt_json: str = ""
     checkpoint_json: str = ""
 
-    def deserialize(self) -> dict:
-        return {
-            "output": self.output,
-            "receipt_json": self.receipt_json,
-            "checkpoint_json": self.checkpoint_json,
-        }
+    def deserialize(self) -> "InvariantTask":
+        return self
 
 
 # ── Task executor ─────────────────────────────────────────────────
@@ -128,6 +180,7 @@ class InvariantMiner:
         self.metagraph = bt.Metagraph(
             netuid=config.netuid, network=config.subtensor.network, sync=False
         )
+        _ensure_external_ip(config)  # resolve LAN IP before axon binds
         self.axon = bt.Axon(wallet=self.wallet, config=config)
 
         self.registry = Registry(REGISTRY_PATH)
@@ -214,14 +267,12 @@ class InvariantMiner:
             traceback.print_exc()
         return synapse
 
-    async def blacklist(self, synapse: InvariantTask):
-        try:
-            uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-            if not self.metagraph.validator_permit[uid]:
-                return True, "Not a permitted validator"
-            return False, "OK"
-        except Exception:
-            return True, "Unknown hotkey"
+    async def blacklist(self, synapse: InvariantTask) -> Tuple[bool, str]:
+        # Allow any registered neuron on the subnet (validator_permit requires stake
+        # which is unavailable on local dev chains; block only unknown hotkeys).
+        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
+            return True, "Unknown hotkey — not registered on subnet"
+        return False, "OK"
 
     async def priority(self, synapse: InvariantTask) -> float:
         try:

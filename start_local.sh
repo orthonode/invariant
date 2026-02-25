@@ -26,24 +26,16 @@ if [[ "$1" != "--register-only" ]]; then
     # ── 1. Stop any existing node ──────────────────────────────────────────
     pkill -f "node-subtensor" 2>/dev/null && warn "Killed existing node" && sleep 2
 
-    # ── 2. Generate chain spec ─────────────────────────────────────────────
+    # ── 2. Start node in background ────────────────────────────────────────
     echo ""
-    echo "[1/4] Generating local chain spec..."
-    "$BINARY" build-spec --chain=local --disable-default-bootnode --raw > "$CHAINSPEC" 2>/dev/null
-    ok "Chain spec written to $CHAINSPEC"
-
-    # ── 3. Start node in background ────────────────────────────────────────
-    echo ""
-    echo "[2/4] Starting subtensor node (instant sealing)..."
+    echo "[1/4] Starting subtensor node (--dev --one single-validator mode)..."
     nohup "$BINARY" \
-        --chain "$CHAINSPEC" \
-        --alice \
-        --sealing instant \
+        --dev \
+        --one \
+        --validator \
         --rpc-external \
         --rpc-cors=all \
         --rpc-methods=unsafe \
-        --unsafe-force-node-key-generation \
-        --tmp \
         > "$LOG_NODE" 2>&1 &
     NODE_PID=$!
     echo "      PID=$NODE_PID  Log=$LOG_NODE"
@@ -75,23 +67,20 @@ if [[ "$1" != "--node-only" ]]; then
     echo "[4/4] Ready. Open two more terminals and run:"
     echo ""
     echo "  Terminal 1 (miner):"
-    echo "  cd /home/arhant/Development/Bittensor"
-    echo "  source venv/bin/activate"
+    echo "  cd /home/arhant/Development/Bittensor && source venv/bin/activate"
     echo "  python miner.py \\"
     echo "      --wallet.name miner1 --wallet.hotkey default \\"
-    echo "      --netuid 1 \\"
-    echo "      --subtensor.network local \\"
-    echo "      --subtensor.chain_endpoint ws://127.0.0.1:9944 \\"
-    echo "      --axon.port 8091"
+    echo "      --netuid 1 --subtensor.network local --axon.port 8091"
+    echo "  # LAN IP is auto-detected — no --axon.external_ip needed"
     echo ""
     echo "  Terminal 2 (validator):"
-    echo "  cd /home/arhant/Development/Bittensor"
-    echo "  source venv/bin/activate"
+    echo "  cd /home/arhant/Development/Bittensor && source venv/bin/activate"
     echo "  python validator.py \\"
     echo "      --wallet.name validator1 --wallet.hotkey default \\"
-    echo "      --netuid 1 \\"
-    echo "      --subtensor.network local \\"
-    echo "      --subtensor.chain_endpoint ws://127.0.0.1:9944"
+    echo "      --netuid 1 --subtensor.network local"
+    echo ""
+    echo "  Or run everything via master test suite:"
+    echo "  python run_tests.py --all"
     echo ""
     echo "  Node log:  tail -f $LOG_NODE"
     echo "  Stop node: pkill -f node-subtensor"
