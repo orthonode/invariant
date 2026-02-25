@@ -1,24 +1,22 @@
 """
-INVARIANT - Phase 1: Bittensor Validator
-==========================================
-Bittensor SDK v10.1.0 — verified API.
+validator.py  (project root runner)
+======================================
+INVARIANT subnet validator.  Three-tier deterministic scoring pipeline.
+Imports all gate logic through the bridge — Rust when compiled, Python fallback.
 
-Fixes applied vs original:
-  1. bt.Dendrite → bt.dendrite (v10 lowercase instantiation)
-  2. dendrite.forward() → dendrite() — v10 direct call syntax
-  3. list of synapses → single synapse per dendrite call (v10 requirement)
-  4. Removed circular import (from miner import) — synapse defined here
-  5. Removed protocol.py import — InvariantRegistration defined inline
-  6. registry._data private access → safe public getter
-  7. convert_weights_and_uids_for_emit → v10 path with fallback
-  8. axon.is_serving → safe attribute check with getattr
-  9-13. OAP method stubs for missing methods
+v10.1.0 API:
+  - bt.Wallet / bt.Subtensor / bt.Metagraph / bt.Axon / bt.Dendrite (PascalCase)
+  - bt.Config (not bt.config)
+  - bt.logging.set_config (not bt.logging(config=...))
+  - Dendrite called as: await self.dendrite(axons=[axon], synapse=s, timeout=N)
+  - axon.is_serving is a property on AxonInfo (ip != "0.0.0.0")
 
-Usage:
+Usage (from project root):
     python validator.py \
         --wallet.name validator1 \
         --wallet.hotkey default \
         --netuid 1 \
+        --subtensor.network local \
         --subtensor.chain_endpoint ws://127.0.0.1:9944
 """
 
@@ -35,47 +33,26 @@ from typing import Dict, List, Optional, Tuple
 import bittensor as bt
 import numpy as np
 
-# ─────────────────────────────────────────────
-# v10.1.0 API NOTES
-# ─────────────────────────────────────────────
-# bt.Wallet / bt.Subtensor / bt.Metagraph / bt.Axon / bt.Dendrite  (PascalCase)
-# bt.Config  (not bt.config)
-# Dendrite is called: await dendrite(axons=[...], synapse=s, timeout=N) → list
-# AxonInfo.is_serving is a property: ip != "0.0.0.0"
-# set_weights no longer takes version_key kwarg — use mechid=0 (default)
+# ── Phase1-core path (from project root) ──────────────────────────
+# Resolves to: <repo>/invariant/invariant/phase1_core/
+sys.path.insert(0, str(Path(__file__).parent / "invariant" / "invariant" / "phase1_core"))
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "phase1_core"))
-sys.path.insert(0, str(Path(__file__).parent / "phase1_core"))
+from invariant_gates_bridge import (  # noqa: E402
+    GateResult,
+    Registry,
+    Verifier,
+    using_rust,
+)
 
-# ── Import synapse from miner safely ─────────────────────────────────────────
-# Direct import avoided to prevent circular dependency.
-# InvariantTask is redefined here — identical to miner.py definition.
-# Both files use the same field names so synapses are wire-compatible.
+from invariant_oap import OAPEngine, ViolationType  # noqa: E402
 
-try:
-    from invariant_gates import (
-        GateResult,
-        InvariantReceipt,
-        InvariantRegistry,
-        InvariantVerifier,
-    )
-    from invariant_oap import OAPEngine, ViolationType
-
-    INVARIANT_AVAILABLE = True
-except ImportError as e:
-    bt.logging.warning(f"phase1_core not found ({e}) — stub mode")
-    INVARIANT_AVAILABLE = False
-
-
-# ─────────────────────────────────────────────
-# SYNAPSE  (identical to miner.py — wire compatible)
-# ─────────────────────────────────────────────
+# ── Synapse (defined here — identical fields to miner.py, wire-compatible) ──
 
 
 class InvariantTask(bt.Synapse):
     task_input: str = ""
     tempo_id: int = 0
-    task_type: str = "reasoning"
+    task_type: str = "hash"
     output: str = ""
     receipt_json: str = ""
     checkpoint_json: str = ""
@@ -88,148 +65,34 @@ class InvariantTask(bt.Synapse):
         }
 
 
-class InvariantRegistration(bt.Synapse):
-    """Miner registration handshake."""
+# ── Data paths ─────────────────────────────────────────────────────────────
 
-    hotkey: str = ""
-    agent_id_hex: str = ""
-    model_hash_hex: str = ""
-    reg_block: int = 0
-    registered: bool = False
-    reason: str = ""
+DATA = Path("./validator_data")
+DATA.mkdir(exist_ok=True)
 
-    def deserialize(self):
-        return self
+REGISTRY_PATH = str(DATA / "registry.json")
+OAP_PATH = str(DATA / "oap.json")
+STATE_PATH = str(DATA / "state.json")
 
-
-# ─────────────────────────────────────────────
-# PATHS
-# ─────────────────────────────────────────────
-
-DATA_DIR = Path("./invariant_validator_data")
-REGISTRY_PATH = DATA_DIR / "registry.json"
-OAP_PATH = DATA_DIR / "oap_ledgers.json"
-STATE_PATH = DATA_DIR / "gate_state.json"
-
-SUBMISSION_WINDOW_BLOCKS = 10
-LATE_SUBMISSION_BLOCKS = 15
-QUALITY_PASS_THRESHOLD = 0.3
-TASK_TYPES = ["math", "hash", "reasoning"]
+WINDOW_BLOCKS = 10  # 120 s submission window
+LATE_BLOCKS = 15  # 180 s late window
+MIN_QUALITY = 0.3  # minimum quality for non-zero score
 
 
-# ─────────────────────────────────────────────
-# STUBS (phase1_core not present)
-# ─────────────────────────────────────────────
+# ── Task generation ────────────────────────────────────────────────────────
 
 
-class _GateResultStub:
-    """String-constant mirror of the real GateResult enum values."""
+def generate_task(tempo: int, uid: int) -> Tuple[str, str]:
+    """Deterministic per-(tempo, uid) pair — different for every miner every tempo."""
+    seed = hashlib.sha256(f"{tempo}:{uid}".encode()).hexdigest()
+    kind = ["math", "hash", "hash"][int(seed[0], 16) % 3]
 
-    PASS = "PASS"
-    AGENT_NOT_AUTH = "GATE1_AGENT_NOT_AUTHORIZED"
-    MODEL_NOT_APPROVED = "GATE2_MODEL_NOT_APPROVED"
-    REPLAY_DETECTED = "GATE3_REPLAY_DETECTED"
-    DIGEST_MISMATCH = "GATE4_DIGEST_MISMATCH"
-
-    # ── Compatibility helpers ──────────────────────────────────────────────
-    @staticmethod
-    def is_pass(code) -> bool:
-        """Accept both string 'PASS' and the enum member GateResult.PASS."""
-        return str(code) == "PASS" or (hasattr(code, "value") and code.value == "PASS")
-
-
-class _StubReceipt:
-    def __init__(self, d):
-        self.agent_id = bytes.fromhex(d.get("agent_id", "0" * 64))
-
-
-class _StubRegistry:
-    def __init__(self):
-        self._agents = {}
-
-    def get_agents(self):
-        return self._agents
-
-    def register_agent(self, aid, hotkey, meta=None):
-        key = aid if isinstance(aid, str) else aid.hex()
-        self._agents[key] = {"hotkey": hotkey}
-
-    def approve_model(self, *a, **kw):
-        pass
-
-
-class _StubVerifier:
-    def verify(self, receipt):
-        return "PASS", None
-
-
-class _StubOAP:
-    def get_nts(self, *a, **kw):
-        return 50.0
-
-    def get_or_create_ledger(self, *a, **kw):
-        pass
-
-    def load_shared_checkpoint(self):
-        return 0, 0
-
-    def write_shared_checkpoint(self, tempo):
-        return {"agents": {}}
-
-    def record_clean_tempo(self, *a, **kw):
-        pass
-
-    def record_timeout(self, *a, **kw):
-        pass
-
-    def record_violation(self, *a, **kw):
-        pass
-
-    def record_clean(self, *a, **kw):
-        pass
-
-
-class _ViolationTypeStub:
-    """String-constant mirror of the real ViolationType enum values."""
-
-    # The real OAP record_violation calls vtype.value — so we make these
-    # objects that have a .value attribute, not bare strings.
-    class _VT:
-        def __init__(self, v):
-            self.value = v
-
-        def __repr__(self):
-            return self.value
-
-    GATE1_IDENTITY = property(lambda self: self._VT("gate1_identity_failure"))
-    GATE2_MODEL = property(lambda self: self._VT("gate2_model_failure"))
-    GATE3_REPLAY = property(lambda self: self._VT("gate3_replay_attempt"))
-    GATE4_DIGEST = property(lambda self: self._VT("gate4_digest_tamper"))
-    NO_RECEIPT = property(lambda self: self._VT("no_receipt_submitted"))
-
-
-if not INVARIANT_AVAILABLE:
-    GateResult = _GateResultStub()
-    ViolationType = _ViolationTypeStub()
-
-
-# ─────────────────────────────────────────────
-# TASK GENERATION + SCORING
-# ─────────────────────────────────────────────
-
-
-def generate_task(tempo_id: int, uid: int) -> Tuple[str, str]:
-    seed = hashlib.sha256(f"{tempo_id}:{uid}".encode()).hexdigest()
-    task_type = TASK_TYPES[int(seed[0], 16) % len(TASK_TYPES)]
-    if task_type == "math":
-        a = int(seed[0:4], 16) % 1000
-        b = int(seed[4:8], 16) % 1000
+    if kind == "math":
+        a = int(seed[0:4], 16) % 500
+        b = int(seed[4:8], 16) % 500
         op = ["+", "-", "*"][int(seed[8], 16) % 3]
-        return f"{a} {op} {b}", task_type
-    elif task_type == "hash":
-        return f"INVARIANT:{tempo_id}:{uid}:{seed[:8]}", task_type
-    else:
-        return f"TEMPO:{tempo_id} UID:{uid} SEED:{seed[:12]}", task_type
+        return f"{a} {op} {b}", "math"
+    return f"INVARIANT:{tempo}:{uid}:{seed[:12]}", "hash"
 
 
 def score_output(task_input: str, task_type: str, output: str) -> float:
@@ -241,394 +104,249 @@ def score_output(task_input: str, task_type: str, output: str) -> float:
             if all(c in allowed for c in task_input):
                 return 1.0 if output.strip() == str(eval(task_input)) else 0.0
             return 0.0
-        elif task_type == "hash":
-            expected = hashlib.sha256(task_input.encode()).hexdigest()
-            return 1.0 if output.strip().lower() == expected else 0.0
-        else:
-            if output.startswith("PROCESSED:"):
-                expected = hashlib.sha256(task_input.encode()).hexdigest()
-                return (
-                    1.0 if output.replace("PROCESSED:", "").strip() == expected else 0.3
-                )
-            return 0.2 if len(output.strip()) > 5 else 0.0
-    except Exception as e:
-        bt.logging.debug(f"Score error: {e}")
+        # hash / default
+        expected = hashlib.sha256(task_input.encode()).hexdigest()
+        submitted = output.replace("PROCESSED:", "").strip()
+        if submitted.lower() == expected.lower():
+            return 1.0
+        return 0.2 if len(output.strip()) > 5 else 0.0
+    except Exception:
         return 0.0
 
 
-# ─────────────────────────────────────────────
-# SAFE WEIGHT UTIL  (v10 path with fallback)
-# ─────────────────────────────────────────────
-
-
-def convert_weights(uids: np.ndarray, weights: np.ndarray):
-    """Try v10 path, fall back gracefully."""
-    try:
-        from bittensor.utils.weight_utils import convert_weights_and_uids_for_emit
-
-        return convert_weights_and_uids_for_emit(uids=uids, weights=weights)
-    except ImportError:
-        pass
-    try:
-        from bittensor.utils import weight_utils
-
-        return weight_utils.convert_weights_and_uids_for_emit(
-            uids=uids, weights=weights
-        )
-    except Exception:
-        pass
-    # Last resort: return as-is (subtensor.set_weights accepts numpy directly in v10)
-    return uids.astype(np.int64), weights.astype(np.float32)
-
-
-# ─────────────────────────────────────────────
-# VALIDATOR
-# ─────────────────────────────────────────────
+# ── Validator ──────────────────────────────────────────────────────────────
 
 
 class InvariantValidator:
     def __init__(self, config: bt.Config):
         self.config = config
-        DATA_DIR.mkdir(exist_ok=True)
-        bt.logging.info("Initializing INVARIANT Validator (v10.1.0)...")
-
-        # v10 — PascalCase
         self.wallet = bt.Wallet(config=config)
         self.subtensor = bt.Subtensor(config=config)
-        # sync=False: defer sync until run_tempo so startup never blocks
         self.metagraph = bt.Metagraph(
-            netuid=config.netuid, network=config.subtensor.network, sync=False
+            netuid=config.netuid,
+            network=config.subtensor.network,
+            sync=False,
         )
-
         # v10: bt.Dendrite (PascalCase)
         self.dendrite = bt.Dendrite(wallet=self.wallet)
 
-        # INVARIANT core or stubs
-        if INVARIANT_AVAILABLE:
-            self.registry = InvariantRegistry(str(REGISTRY_PATH))
-            self.verifier = InvariantVerifier(self.registry, str(STATE_PATH))
-            self.oap = OAPEngine(str(OAP_PATH))
-        else:
-            self.registry = _StubRegistry()
-            self.verifier = _StubVerifier()
-            self.oap = _StubOAP()
+        self.registry = Registry(REGISTRY_PATH)
+        self.verifier = Verifier(REGISTRY_PATH, STATE_PATH)
+        self.oap = OAPEngine(OAP_PATH)
+        self.tempo = self._current_tempo()
 
-        try:
-            checkpoint_tempo, _ = self.oap.load_shared_checkpoint()
-            if checkpoint_tempo > 0:
-                bt.logging.info(f"OAP checkpoint loaded from tempo {checkpoint_tempo}")
-        except Exception:
-            pass
+        # uid → agent_id_hex cache; rebuilt on every metagraph sync
+        self._uid_to_agent: Dict[int, str] = {}
 
-        self.current_tempo = self._get_current_tempo()
         bt.logging.success(
-            f"Validator ready | netuid={config.netuid} | tempo={self.current_tempo}"
+            f"INVARIANT Validator ready | "
+            f"backend={'Rust' if using_rust() else 'Python'} | "
+            f"tempo={self.tempo}"
         )
 
-    def _get_current_tempo(self) -> int:
+    # ── Helpers ────────────────────────────────────────────────────────────
+
+    def _current_tempo(self) -> int:
         try:
             block = self.subtensor.get_current_block()
-            tempo = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
-            return block // tempo
+            t = self.subtensor.get_subnet_hyperparameters(self.config.netuid).tempo
+            return block // t
         except Exception:
             return 0
 
-    def _get_agents(self) -> dict:
-        """
-        FIX 6: safe registry access — no private _data attribute.
-        Returns {agent_id_hex: {hotkey: ...}} dict.
-        """
+    def _build_uid_agent_map(self):
+        """Rebuild uid → agent_id_hex from registry JSON + metagraph hotkeys."""
+        self._uid_to_agent = {}
+        hotkey_to_agent: Dict[str, str] = {}
+
         try:
-            # Try public method first
-            if hasattr(self.registry, "get_agents"):
-                return self.registry.get_agents()
-            # Fallback: try _data carefully
-            if hasattr(self.registry, "_data"):
-                return self.registry._data.get("agents", {})
+            with open(REGISTRY_PATH) as f:
+                data = json.load(f)
+            for aid_hex, meta in data.get("agents", {}).items():
+                hk = meta.get("hotkey", "")
+                if hk:
+                    hotkey_to_agent[hk] = aid_hex
         except Exception:
             pass
-        return {}
 
-    # ── Tier 1 ───────────────────────────────────────────────────────────────
+        for uid, hotkey in enumerate(self.metagraph.hotkeys):
+            if hotkey in hotkey_to_agent:
+                self._uid_to_agent[uid] = hotkey_to_agent[hotkey]
 
-    def verify_receipt(
-        self, uid: int, agent_id_hex: str, receipt_json: str
-    ) -> Tuple[float, str, Optional[str]]:
-        """
-        Returns (gate_multiplier, result_code_str, detail_or_None).
-        result_code_str is always a plain string ("PASS", "GATE1_…", etc.)
-        so callers can compare with GateResult.PASS without worrying about
-        enum vs string type.
-        """
+    # ── Tier 1: Gate verification ──────────────────────────────────────────
+
+    def _verify_receipt(
+        self, uid: int, receipt_json: str
+    ) -> Tuple[float, str, int, str]:
+        """Returns (gate_multiplier, result_code, gate_number, detail)."""
         if not receipt_json:
-            return 0.0, GateResult.AGENT_NOT_AUTH, "No receipt"
+            return 0.0, GateResult.GATE1, 1, "No receipt"
 
         try:
             receipt_dict = json.loads(receipt_json)
-        except Exception as e:
-            return 0.0, GateResult.DIGEST_MISMATCH, f"Parse error: {e}"
+        except json.JSONDecodeError as e:
+            return 0.0, GateResult.PARSE_ERROR, 4, str(e)
 
-        # Cross-check: receipt agent_id must match our registry entry
-        if agent_id_hex and receipt_dict.get("agent_id") != agent_id_hex:
-            return 0.0, GateResult.AGENT_NOT_AUTH, "agent_id mismatch with registry"
+        # Cross-check: receipt's agent_id must match our uid→agent mapping
+        expected_agent = self._uid_to_agent.get(uid)
+        if expected_agent and receipt_dict.get("agent_id") != expected_agent:
+            return 0.0, GateResult.GATE1, 1, "agent_id mismatch with registry"
 
-        # Run through the four-gate verifier
-        if INVARIANT_AVAILABLE:
-            # verifier.verify() returns dict: {"result": str, "gate_number": int, "detail": str}
-            try:
-                result = self.verifier.verify(receipt_dict)
-                code = result["result"]
-                detail = result.get("detail", "")
-            except Exception as e:
-                return 0.0, GateResult.DIGEST_MISMATCH, f"Verifier error: {e}"
-        else:
-            # Stub: always pass (no real verification in stub mode)
-            code, detail = "PASS", ""
+        result = self.verifier.verify(receipt_dict)
+        if GateResult.is_pass(result["result"]):
+            return 1.0, result["result"], 0, ""
+        return 0.0, result["result"], result["gate_number"], result.get("detail", "")
 
-        if code == GateResult.PASS or code == "PASS":
-            return 1.0, GateResult.PASS, None
-        return 0.0, code, detail or None
-
-    # ── Tier 3 ───────────────────────────────────────────────────────────────
-
-    def get_nts_multiplier(
-        self, agent_id_hex: str, checkpoint_json: str, gate_passed: bool
-    ) -> float:
-        if not agent_id_hex:
-            return 0.5
-        try:
-            return self.oap.get_nts(agent_id_hex) / 100.0
-        except Exception:
-            return 0.5
-
-    # ── Full pipeline ─────────────────────────────────────────────────────────
+    # ── Full per-miner score ───────────────────────────────────────────────
 
     def score_miner(
         self,
         uid: int,
-        agent_id_hex: str,
         task_input: str,
         task_type: str,
         response: InvariantTask,
-        submission_time: float,
-        tempo_start_time: float,
+        tempo_start: float,
     ) -> float:
-        elapsed = submission_time - tempo_start_time
-        in_window = elapsed <= (SUBMISSION_WINDOW_BLOCKS * 12)
-        late = elapsed <= (LATE_SUBMISSION_BLOCKS * 12)
+        agent_hex = self._uid_to_agent.get(uid, "")
+        elapsed = time.time() - tempo_start
+        block_s = 12.0
+        in_window = elapsed <= WINDOW_BLOCKS * block_s
+        late = elapsed <= LATE_BLOCKS * block_s
         freshness = 1.0 if in_window else (0.5 if late else 0.0)
 
         if freshness == 0.0:
-            try:
-                self.oap.record_timeout(agent_id_hex, self.current_tempo)
-            except Exception:
-                pass
+            if agent_hex:
+                self.oap.record_timeout(agent_hex, self.tempo)
             bt.logging.warning(f"UID {uid} timed out ({elapsed:.1f}s)")
             return 0.0
 
-        # verify_receipt now always returns plain string result_code
-        gate_mult, result_code, gate_detail = self.verify_receipt(
-            uid, agent_id_hex, response.receipt_json
+        # Tier 1 — four-gate verification
+        gate_mult, result_code, gate_num, detail = self._verify_receipt(
+            uid, response.receipt_json
         )
 
         if gate_mult == 0.0:
-            # Map result_code string to gate number
-            gate_num = {
-                GateResult.AGENT_NOT_AUTH: 1,
-                "GATE1_AGENT_NOT_AUTHORIZED": 1,
-                GateResult.MODEL_NOT_APPROVED: 2,
-                "GATE2_MODEL_NOT_APPROVED": 2,
-                GateResult.REPLAY_DETECTED: 3,
-                "GATE3_REPLAY_DETECTED": 3,
-                GateResult.DIGEST_MISMATCH: 4,
-                "GATE4_DIGEST_MISMATCH": 4,
-            }.get(result_code, 0)
-            vtype = {
-                1: ViolationType.GATE1_IDENTITY,
-                2: ViolationType.GATE2_MODEL,
-                3: ViolationType.GATE3_REPLAY,
-                4: ViolationType.GATE4_DIGEST,
-            }.get(gate_num, ViolationType.NO_RECEIPT)
-            try:
+            if agent_hex:
+                vtype_map = {
+                    1: ViolationType.GATE1,
+                    2: ViolationType.GATE2,
+                    3: ViolationType.GATE3,
+                    4: ViolationType.GATE4,
+                }
+                vtype = vtype_map.get(gate_num, ViolationType.NO_RECEIPT)
                 self.oap.record_violation(
-                    agent_id_hex, self.current_tempo, gate_num, vtype, gate_detail or ""
+                    agent_hex, self.tempo, gate_num, vtype, detail
                 )
-            except Exception:
-                pass
-            bt.logging.warning(f"UID {uid} gate fail: {result_code} | {gate_detail}")
+            bt.logging.warning(f"UID {uid} gate fail: {result_code} | {detail}")
             return 0.0
 
+        # Tier 2 — output quality
         quality = score_output(task_input, task_type, response.output)
-        nts_mult = self.get_nts_multiplier(agent_id_hex, response.checkpoint_json, True)
-        try:
-            self.oap.record_clean_tempo(agent_id_hex, self.current_tempo)
-        except Exception:
-            pass
 
-        final = quality * nts_mult * freshness
+        # Tier 3 — NTS multiplier
+        nts = self.oap.get_nts(agent_hex) if agent_hex else 50.0
+        if agent_hex:
+            self.oap.record_clean(agent_hex, self.tempo)
+
+        weight = OAPEngine.emission_weight(quality, nts, in_window, late)
         bt.logging.info(
-            f"UID {uid} | quality={quality:.3f} × NTS={nts_mult * 100:.1f} × "
-            f"fresh={freshness:.1f} = weight={final:.4f}"
+            f"UID {uid} | quality={quality:.2f} × NTS={nts:.1f}/100 × "
+            f"fresh={freshness:.1f} = weight={weight:.4f}"
         )
-        return final
+        return weight
 
-    # ── Tempo loop ────────────────────────────────────────────────────────────
+    # ── Tempo loop ─────────────────────────────────────────────────────────
 
     async def run_tempo(self):
-        tempo_start = time.time()
         self.metagraph.sync(subtensor=self.subtensor)
-        self.current_tempo = self._get_current_tempo()
-        bt.logging.info(f"=== Tempo {self.current_tempo} ===")
+        self.tempo = self._current_tempo()
+        self._build_uid_agent_map()
 
         # AxonInfo.is_serving is a property: True when ip != "0.0.0.0"
         miner_uids = [
             uid
             for uid, axon in enumerate(self.metagraph.axons)
             if getattr(axon, "is_serving", False)
-            and uid < len(self.metagraph.validator_permit)
             and not self.metagraph.validator_permit[uid]
         ]
 
-        # Fallback for local testing: if no miners are "serving" (axon not
-        # announced on-chain), include all non-validator UIDs so we can still
-        # exercise the scoring pipeline.
         if not miner_uids:
             bt.logging.warning(
-                "No miners with is_serving=True. "
-                "Falling back to all non-validator UIDs for local testing."
+                "No active miners in metagraph (is_serving=False for all)"
             )
-            miner_uids = [
-                uid
-                for uid in range(len(self.metagraph.hotkeys))
-                if uid < len(self.metagraph.validator_permit)
-                and not self.metagraph.validator_permit[uid]
-                and uid != 0  # skip founder
-            ]
-
-        if not miner_uids:
-            bt.logging.warning("No active miners found in metagraph")
             return
 
-        bt.logging.info(f"Querying {len(miner_uids)} miners...")
+        bt.logging.info(f"=== Tempo {self.tempo} | {len(miner_uids)} active miners ===")
+        tempo_start = time.time()
 
-        tasks = {uid: generate_task(self.current_tempo, uid) for uid in miner_uids}
-        axons = [self.metagraph.axons[uid] for uid in miner_uids]
-        weights = np.zeros(len(self.metagraph.hotkeys), dtype=np.float32)
-        agents = self._get_agents()
+        # Generate unique per-miner tasks
+        tasks: Dict[int, Tuple[str, str]] = {
+            uid: generate_task(self.tempo, uid) for uid in miner_uids
+        }
 
-        # FIX 2+3: v10 dendrite is called directly per-axon, not dendrite.forward()
-        # v10 API: responses = await self.dendrite(axons, synapse, timeout)
-        # It accepts a SINGLE synapse (not a list) and sends it to all axons.
-        # For per-miner unique tasks we call once per miner.
-        responses = {}
+        # Query each miner individually so they get their own unique task.
+        # v10 Dendrite: await self.dendrite(axons=[axon], synapse=synapse, timeout=N)
+        # Returns a list with one response per axon.
+        responses: Dict[int, InvariantTask] = {}
         for uid in miner_uids:
             task_input, task_type = tasks[uid]
             synapse = InvariantTask(
                 task_input=task_input,
-                tempo_id=self.current_tempo,
+                tempo_id=self.tempo,
                 task_type=task_type,
             )
             try:
-                axon = self.metagraph.axons[uid]
-                # v10 Dendrite: await dendrite(axons=[axon], synapse=s, timeout=N)
-                # Returns list[Synapse] — one per axon
                 result = await self.dendrite(
-                    axons=[axon],
+                    axons=[self.metagraph.axons[uid]],
                     synapse=synapse,
-                    timeout=SUBMISSION_WINDOW_BLOCKS * 12,
+                    timeout=WINDOW_BLOCKS * 12,
                 )
+                # dendrite returns list[Synapse] — one per axon
                 responses[uid] = result[0] if isinstance(result, list) else result
             except Exception as e:
-                bt.logging.debug(f"UID {uid} query error: {e}")
+                bt.logging.debug(f"UID {uid} dendrite error: {e}")
                 responses[uid] = synapse  # empty / default response
 
-        response_time = time.time()
+        weights = np.zeros(len(self.metagraph.hotkeys), dtype=np.float32)
 
         for uid in miner_uids:
-            hotkey = self.metagraph.hotkeys[uid]
-            agent_id_hex = next(
-                (aid for aid, info in agents.items() if info.get("hotkey") == hotkey),
-                None,
-            )
-            if not agent_id_hex:
-                bt.logging.debug(f"UID {uid} not in registry — skip")
-                continue
-
             response = responses.get(uid)
             if response is None:
                 weights[uid] = 0.0
                 continue
 
+            task_input, task_type = tasks[uid]
             weights[uid] = self.score_miner(
                 uid=uid,
-                agent_id_hex=agent_id_hex,
-                task_input=tasks[uid][0],
-                task_type=tasks[uid][1],
+                task_input=task_input,
+                task_type=task_type,
                 response=response,
-                submission_time=response_time,
-                tempo_start_time=tempo_start,
+                tempo_start=tempo_start,
             )
 
-        # Normalize
+        # Normalise
         total = weights.sum()
         if total > 0:
-            weights = weights / total
+            weights /= total
 
         # Set weights on chain
         try:
             nonzero = np.where(weights > 0)[0]
             if len(nonzero) > 0:
-                uids_out, weights_out = convert_weights(nonzero, weights[nonzero])
                 self.subtensor.set_weights(
                     wallet=self.wallet,
                     netuid=self.config.netuid,
-                    uids=uids_out,
-                    weights=weights_out,
+                    uids=nonzero.astype(np.int64),
+                    weights=weights[nonzero].astype(np.float32),
                     wait_for_finalization=False,
                 )
                 bt.logging.success(
-                    f"Weights set | tempo={self.current_tempo} | miners={len(nonzero)}"
+                    f"Weights set | tempo={self.tempo} | active_miners={len(nonzero)}"
                 )
         except Exception as e:
             bt.logging.error(f"set_weights failed: {e}")
 
-        try:
-            data = self.oap.write_shared_checkpoint(self.current_tempo)
-            n = len(data.get("agents", {})) if isinstance(data, dict) else "?"
-            bt.logging.info(f"OAP checkpoint: tempo={self.current_tempo} agents={n}")
-        except Exception as e:
-            bt.logging.debug(f"OAP checkpoint skipped: {e}")
-
-    async def handle_registration(
-        self, registration: InvariantRegistration
-    ) -> InvariantRegistration:
-        try:
-            expected = hashlib.sha256(
-                (
-                    registration.hotkey
-                    + registration.model_hash_hex
-                    + str(registration.reg_block)
-                ).encode()
-            ).hexdigest()
-            if expected != registration.agent_id_hex:
-                registration.registered = False
-                registration.reason = "agent_id mismatch"
-                return registration
-
-            agents = self._get_agents()
-            if hasattr(self.registry, "register_agent"):
-                self.registry.register_agent(
-                    registration.agent_id_hex, registration.hotkey
-                )
-                self.registry.approve_model(registration.model_hash_hex)
-
-            registration.registered = True
-            registration.reason = "OK"
-            bt.logging.success(f"Registered {registration.agent_id_hex[:16]}...")
-        except Exception as e:
-            registration.registered = False
-            registration.reason = str(e)
-        return registration
+    # ── Main loop ──────────────────────────────────────────────────────────
 
     def run(self):
         bt.logging.success("INVARIANT Validator running...")
@@ -636,13 +354,13 @@ class InvariantValidator:
             try:
                 asyncio.run(self.run_tempo())
                 try:
-                    tempo = self.subtensor.get_subnet_hyperparameters(
+                    t = self.subtensor.get_subnet_hyperparameters(
                         self.config.netuid
                     ).tempo
                 except Exception:
-                    tempo = 100
-                sleep = tempo * 12
-                bt.logging.info(f"Next tempo in {sleep}s...")
+                    t = 100
+                sleep = t * 12
+                bt.logging.info(f"Tempo complete. Next in {sleep}s...")
                 time.sleep(sleep)
             except KeyboardInterrupt:
                 bt.logging.info("Validator shutting down...")
@@ -653,21 +371,19 @@ class InvariantValidator:
                 time.sleep(30)
 
 
-# ─────────────────────────────────────────────
-# ENTRY POINT
-# ─────────────────────────────────────────────
+# ── Entry point ────────────────────────────────────────────────────────────
 
 
 def get_config() -> bt.Config:
-    parser = argparse.ArgumentParser(description="INVARIANT Validator v10.1.0")
-    bt.Wallet.add_args(parser)
-    bt.Subtensor.add_args(parser)
-    bt.logging.add_args(parser)
-    parser.add_argument("--netuid", type=int, default=1)
-    return bt.Config(parser)
+    p = argparse.ArgumentParser(description="INVARIANT Validator")
+    bt.Wallet.add_args(p)
+    bt.Subtensor.add_args(p)
+    bt.logging.add_args(p)
+    p.add_argument("--netuid", type=int, default=1)
+    return bt.Config(p)
 
 
 if __name__ == "__main__":
-    config = get_config()
-    bt.logging(config=config, logging_dir="./logs")
-    InvariantValidator(config).run()
+    cfg = get_config()
+    bt.logging.set_config(config=cfg)
+    InvariantValidator(cfg).run()
