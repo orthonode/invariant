@@ -9,7 +9,7 @@
  \___/\_| \_/\___/\_| |_/\_| \_|\___/\_| |_/\_| \_/ \_/
 ```
 
-**Deterministic Trust Infrastructure for Bittensor**
+**Execution is the claim. Proof is INVARIANT.**
 
 *by [Orthonode Infrastructure Labs](https://orthonode.xyz)*
 
