@@ -142,6 +142,10 @@ INVARIANT/
 │   ├── register_subnet.py        ← Subnet registration helper
 │   └── launch_nodes.py           ← Launch miner + validator helper
 │
+├── sdk/
+│   └── invariant-miner/          ← Python SDK for external miners
+│       └── invariant_miner/      ← Importable package (identity, receipt, gate, verifier)
+│
 ├── docs/
 │   ├── WHITEPAPER.md             ← Technical whitepaper
 │   ├── INCENTIVE_MECHANISM.md    ← Incentive mechanism deep dive
@@ -149,6 +153,11 @@ INVARIANT/
 │   ├── DEPLOYMENT_GUIDE.md       ← Full deployment guide
 │   └── LOCAL_TESTING.md          ← Local test suite guide
 │
+├── miner.py                      ← Root-level miner entry point
+├── validator.py                  ← Root-level validator entry point
+├── instant_register.py           ← One-step local dev registration (wallets + subnet)
+├── run_tests.py                  ← Master test controller (unit + e2e)
+├── start_local.sh                ← Start local subtensor node
 ├── README.md
 ├── ROADMAP.md
 ├── THREAT_MODEL.md               ← Complete threat model
@@ -309,72 +318,65 @@ Complete guide for running INVARIANT on a local subtensor dev node.
 ```bash
 git clone https://github.com/opentensor/subtensor.git
 cd subtensor
-cargo build --release --features pow-faucet
-./target/release/node-subtensor --dev --tmp &
+# Build once — takes 30–60 min (pow-faucet enables Alice sudo bypass)
+cargo build -p node-subtensor --features "pow-faucet" --profile release -j4
 cd ..
+
+# Start the node (AURA single-validator mode — do NOT use --sealing instant)
+./start_local.sh
+# Wait for: Imported #1 in the node log
+tail -f /tmp/subtensor_node.log | grep "Imported"
 ```
 
-### 2. Create wallets
+### 2. Register wallets and subnet
+
+**Automated (recommended):** `instant_register.py` creates wallets, funds them from Alice, creates the subnet, and registers miner + validator in one step:
 
 ```bash
+source venv/bin/activate
+python instant_register.py
+```
+
+**Manual (step-by-step):**
+
+```bash
+# Create wallets
 btcli wallet new_coldkey --wallet.name owner
 btcli wallet new_hotkey  --wallet.name owner     --wallet.hotkey default
 btcli wallet new_coldkey --wallet.name miner1
 btcli wallet new_hotkey  --wallet.name miner1    --wallet.hotkey default
-btcli wallet new_coldkey --wallet.name miner2
-btcli wallet new_hotkey  --wallet.name miner2    --wallet.hotkey default
 btcli wallet new_coldkey --wallet.name validator1
 btcli wallet new_hotkey  --wallet.name validator1 --wallet.hotkey default
-```
 
-### 3. Fund wallets
-
-```bash
+# Fund wallets (uses Alice sudo on local dev node)
 btcli wallet faucet --wallet.name owner      --subtensor.network local
 btcli wallet faucet --wallet.name validator1 --subtensor.network local
 btcli wallet faucet --wallet.name miner1     --subtensor.network local
-btcli wallet faucet --wallet.name miner2     --subtensor.network local
-```
 
-### 4. Create the INVARIANT subnet
-
-```bash
+# Create subnet
 btcli subnet create --wallet.name owner --subtensor.network local
-# ─── Note the NETUID printed ───
 export NETUID=1   # replace with your actual netuid
-```
 
-### 5. Register miners and validator
-
-```bash
+# Register
 btcli subnet register --netuid $NETUID --wallet.name miner1     --subtensor.network local
-btcli subnet register --netuid $NETUID --wallet.name miner2     --subtensor.network local
 btcli subnet register --netuid $NETUID --wallet.name validator1 --subtensor.network local
 ```
 
-### 6. Stake the validator
+### 3. Launch
+
+The miner auto-detects its LAN IP for axon registration (chain rejects 127.0.0.1).
 
 ```bash
-btcli stake add --wallet.name validator1 --amount 1000 --subtensor.network local
-```
+source venv/bin/activate
 
-### 7. Launch
-
-```bash
-# Miner 1
-python invariant/invariant/phase1_bittensor/miner.py \
+# Miner (Terminal 1) — LAN IP auto-detected; override with --axon.external_ip if needed
+python miner.py \
     --wallet.name miner1 --wallet.hotkey default \
     --netuid $NETUID --subtensor.network local \
-    --axon.port 8091 &
+    --axon.port 8091
 
-# Miner 2
-python invariant/invariant/phase1_bittensor/miner.py \
-    --wallet.name miner2 --wallet.hotkey default \
-    --netuid $NETUID --subtensor.network local \
-    --axon.port 8092 &
-
-# Validator
-python invariant/invariant/phase1_bittensor/validator.py \
+# Validator (Terminal 2)
+python validator.py \
     --wallet.name validator1 --wallet.hotkey default \
     --netuid $NETUID --subtensor.network local
 ```

@@ -329,6 +329,12 @@ test_wallets/
 # NETUID tracking file (local only)
 .netuid
 
+# Test virtual environment
+test_venv/
+
+# Runtime neuron data directory (local only)
+neurons/
+
 # ─────────────────────────────────────────────────────────────────────────────
 # DOCUMENTATION BUILD ARTIFACTS
 # ─────────────────────────────────────────────────────────────────────────────
