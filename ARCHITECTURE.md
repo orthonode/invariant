@@ -465,7 +465,7 @@ flowchart LR
 ```mermaid
 graph TD
     subgraph EXTERNAL["External Dependencies"]
-        BT["bittensor>=7.0.0"]
+        BT["bittensor>=9.12.0"]
         NP["numpy"]
         RUST_EXT["invariant_gates_rs\n(optional, via maturin)"]
     end
@@ -604,7 +604,7 @@ mindmap
 ```mermaid
 graph TB
     subgraph LOCALNET["Local Development (--subtensor.network local)"]
-        LOCAL_NODE["node-subtensor --dev --tmp\n(local chain, rapid blocks)"]
+        LOCAL_NODE["node-subtensor --dev --one --validator\n(local chain, AURA consensus)"]
         LOCAL_M1["Miner 1\nport 8091\nwallet: miner1"]
         LOCAL_M2["Miner 2\nport 8092\nwallet: miner2"]
         LOCAL_V["Validator\nwallet: validator1\nstake: 1000 τ"]

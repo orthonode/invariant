@@ -56,12 +56,8 @@ class InvariantTask(bt.Synapse):
     receipt_json: str = ""
     checkpoint_json: str = ""
 
-    def deserialize(self) -> dict:
-        return {
-            "output": self.output,
-            "receipt_json": self.receipt_json,
-            "checkpoint_json": self.checkpoint_json,
-        }
+    def deserialize(self) -> "InvariantTask":
+        return self
 
 
 # ── Data paths ─────────────────────────────────────────────────────────────

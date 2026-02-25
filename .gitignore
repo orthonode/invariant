@@ -7,6 +7,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERNAL DOCUMENTS — never publish planning/debug/execution internals
 # ─────────────────────────────────────────────────────────────────────────────
+CLAUDE.md
 
 # Word / Office planning docs
 INVARIANT_*.docx

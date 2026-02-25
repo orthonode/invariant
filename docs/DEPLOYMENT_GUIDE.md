@@ -40,7 +40,7 @@ The Python fallback requires zero compilation. Rust extension adds ~50–100× s
 |-----------|---------|---------|
 | Python | 3.10+ | `python --version` |
 | pip | 23+ | `pip install --upgrade pip` |
-| bittensor | 7.0+ | `pip install bittensor` |
+| bittensor | 9.12+ | `pip install bittensor` |
 | git | any | `git --version` |
 
 ### For local subtensor node
@@ -84,10 +84,10 @@ git clone https://github.com/opentensor/subtensor.git
 cd subtensor
 
 # Build with proof-of-work faucet enabled (required for local dev)
-cargo build --release --features pow-faucet
+cargo build -p node-subtensor --release --features pow-faucet
 
 # Start the local dev node (in a separate terminal or background)
-./target/release/node-subtensor --dev --tmp &
+./target/release/node-subtensor --dev --one --validator --rpc-external --rpc-cors=all --rpc-methods=unsafe &
 
 # Verify it's running
 sleep 3
@@ -203,7 +203,7 @@ Open a new terminal for each miner:
 
 **Terminal 2 — Miner 1:**
 ```bash
-python invariant/invariant/phase1_bittensor/miner.py \
+python miner.py \
     --wallet.name miner1 \
     --wallet.hotkey default \
     --netuid $NETUID \
@@ -215,7 +215,7 @@ python invariant/invariant/phase1_bittensor/miner.py \
 
 **Terminal 3 — Miner 2:**
 ```bash
-python invariant/invariant/phase1_bittensor/miner.py \
+python miner.py \
     --wallet.name miner2 \
     --wallet.hotkey default \
     --netuid $NETUID \
@@ -229,7 +229,7 @@ python invariant/invariant/phase1_bittensor/miner.py \
 
 **Terminal 4 — Validator:**
 ```bash
-python invariant/invariant/phase1_bittensor/validator.py \
+python validator.py \
     --wallet.name validator1 \
     --wallet.hotkey default \
     --netuid $NETUID \
@@ -311,7 +311,7 @@ curl http://YOUR_PUBLIC_IP:8091/  # should return something from the axon
 ### Full argument reference
 
 ```bash
-python invariant/invariant/phase1_bittensor/miner.py \
+python miner.py \
     --wallet.name miner1 \          # wallet cold key name
     --wallet.hotkey default \        # wallet hot key name
     --netuid 1 \                     # subnet netuid
@@ -357,7 +357,7 @@ To add a custom model:
 ### Full argument reference
 
 ```bash
-python invariant/invariant/phase1_bittensor/validator.py \
+python validator.py \
     --wallet.name validator1 \       # validator wallet
     --wallet.hotkey default \
     --netuid 1 \
@@ -510,7 +510,7 @@ pip install target/wheels/invariant_gates_rs-*.whl
 
 ```bash
 # If the miner exits with this error, just restart:
-python invariant/invariant/phase1_bittensor/miner.py [same args] &
+python miner.py [same args] &
 ```
 
 ### No active miners found by validator
@@ -581,7 +581,7 @@ btcli stake add --wallet.name validator1 --amount 1000 --subtensor.network local
 ```bash
 # From the repo root:
 python scripts/test_locally.py          # ✅
-python invariant/invariant/phase1_bittensor/miner.py ...  # ✅
+python miner.py ...                     # ✅
 
 # NOT from inside the scripts/ directory:
 cd scripts && python test_locally.py    # ❌ path resolution will fail
@@ -633,7 +633,7 @@ rm -rf ~/.bittensor/wallets/miner1 ~/.bittensor/wallets/miner2
 rm -rf ~/.bittensor/wallets/validator1 ~/.bittensor/wallets/owner
 
 # Start fresh
-./subtensor/target/release/node-subtensor --dev --tmp &
+./subtensor/target/release/node-subtensor --dev --one --validator --rpc-external --rpc-cors=all --rpc-methods=unsafe &
 ```
 
 ### One-command local test (no node required)

@@ -23,7 +23,7 @@
     "nts_initial_score": 50.0,
     "nts_max_score": 100.0,
     "nts_recovery_per_tempo": 0.3,
-    "nts_catastrophic_threshold": 5,
+    "nts_catastrophic_threshold": 3,
     "nts_violation_decay": 0.95
   },
   "gate_config": {

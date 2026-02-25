@@ -141,14 +141,16 @@ cargo bench
 # Clone and build subtensor
 git clone https://github.com/opentensor/subtensor.git
 cd subtensor
-cargo build --release --features pow-faucet
-./target/release/node-subtensor --dev --tmp &
+cargo build -p node-subtensor --release --features pow-faucet
+./target/release/node-subtensor --dev --one --validator --rpc-external --rpc-cors=all --rpc-methods=unsafe &
 cd ..
 
-# Use the setup scripts
-python scripts/setup_wallets.py
-python scripts/register_subnet.py
-python scripts/launch_nodes.py
+# One-shot wallet + subnet + neuron registration for local dev
+python instant_register.py
+
+# Launch miner and validator (root-level runners)
+python miner.py --wallet.name miner1 --wallet.hotkey default --netuid 1 --subtensor.network local --axon.port 8091
+python validator.py --wallet.name validator1 --wallet.hotkey default --netuid 1 --subtensor.network local
 ```
 
 ---

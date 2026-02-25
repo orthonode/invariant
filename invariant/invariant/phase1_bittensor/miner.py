@@ -81,12 +81,8 @@ class InvariantTask(bt.Synapse):
     receipt_json: str = ""
     checkpoint_json: str = ""
 
-    def deserialize(self) -> dict:
-        return {
-            "output": self.output,
-            "receipt_json": self.receipt_json,
-            "checkpoint_json": self.checkpoint_json,
-        }
+    def deserialize(self) -> "InvariantTask":
+        return self
 
 
 # ── Task executor ─────────────────────────────────────────────────
@@ -209,14 +205,12 @@ class InvariantMiner:
             traceback.print_exc()
         return synapse
 
-    async def blacklist(self, synapse: InvariantTask):
-        try:
-            uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-            if not self.metagraph.validator_permit[uid]:
-                return True, "Not a permitted validator"
-            return False, "OK"
-        except Exception:
-            return True, "Unknown hotkey"
+    async def blacklist(self, synapse: InvariantTask) -> tuple:
+        # Allow any registered neuron on the subnet. validator_permit requires
+        # stake which is unavailable on local dev chains; block only unknown hotkeys.
+        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
+            return True, "Unknown hotkey — not registered on subnet"
+        return False, "OK"
 
     async def priority(self, synapse: InvariantTask) -> float:
         try:

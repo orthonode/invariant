@@ -28,7 +28,7 @@ classifiers = [
 
 [tool.maturin]
 # The Rust crate to build
-manifest-path    = "invariant-gates/Cargo.toml"
+manifest-path    = "invariant/invariant-gates/Cargo.toml"
 
 # Activate the pyo3 extension-module feature
 features         = ["python-ext"]

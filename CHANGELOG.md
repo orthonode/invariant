@@ -105,7 +105,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added — Testing
 
 - `invariant/invariant/tests/test_invariant.py` — Full pytest suite (21 tests)
-  - `TestGateEngine` (11 tests): backend reporting, valid receipt, field validation, all 8 attack vectors, batch verify
+  - `TestGateEngine` (12 tests): backend reporting, valid receipt, field validation, all 8 attack vectors, batch verify
   - `TestOAPEngine` (8 tests): cold-start, clean tempos, violation, catastrophic flag, emission formula, override cap, adaptive anchoring, stats structure
   - `TestThroughput` (1 test): 1,000 verifications within time limit (0.5s Rust / 5s Python)
   - All tests isolated with `pytest.fixture(tmp_path)` — no cross-test state leakage

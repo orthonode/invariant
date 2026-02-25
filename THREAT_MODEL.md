@@ -122,7 +122,7 @@ An actor with the resources to attempt SHA-256 preimage attacks, mount 51% stake
 
 ### GATE 3 — Replay Protection
 
-**Mechanism:** Checks that `receipt.counter > last_confirmed_counter[agent_id]`. Counter is a monotonic `uint64`. State is persisted per validator in `invariant_state.json`.
+**Mechanism:** Checks that `receipt.counter > last_confirmed_counter[agent_id]`. Counter is a monotonic `uint64`. State is persisted per validator in `validator_data/state.json`.
 
 **Threat vector (Replay):** A miner submits the same receipt twice to claim double payment for a single computation.
 

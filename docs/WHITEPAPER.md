@@ -401,7 +401,7 @@ The following risks are outside the cryptographic guarantee boundary:
 
 - **Validator registry poisoning:** If a validator's approved model list is compromised, they may pass invalid Gate 2 checks. This divergence is detectable across validators but not immediately preventable by INVARIANT alone. Yuma Consensus clips outlier validator weights.
 
-- **State file deletion:** Deleting the validator's counter state file (`invariant_state.json`) would reset last-confirmed counters to 0, allowing previously consumed counters to pass Gate 3. This is an operational security concern addressed by deployment procedures, not a cryptographic weakness.
+- **State file deletion:** Deleting the validator's counter state file (`validator_data/state.json`) would reset last-confirmed counters to 0, allowing previously consumed counters to pass Gate 3. This is an operational security concern addressed by deployment procedures, not a cryptographic weakness.
 
 - **Majority stake cartel:** If validators controlling >50% of stake coordinate to pass arbitrary receipts, they can override Yuma Consensus's weight-clipping. This is a Bittensor protocol-level governance risk beyond INVARIANT's subnet boundary.
 
@@ -516,4 +516,4 @@ digest           hex str   64 chars  SHA-256(agent_id‖model_hash‖
                                              execution_hash‖counter)
 ──────────────────────────────────────────────────────────────────
 Wire format: JSON object (approx. 400 bytes)
-Conceptual size: 5 × 32 bytes = 160 bytes (all fields
+Conceptual size: 4 × 32 + 8 = 136 bytes (agent_id/model_hash/execution_hash/digest
