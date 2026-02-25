@@ -18,7 +18,7 @@ Import examples:
 __version__ = "1.0.0"
 __author__ = "INVARIANT Team"
 
-from .phase1_core.invariant_gates_bridge import (
+from .invariant.phase1_core.invariant_gates_bridge import (
     GateResult,
     Registry,
     Verifier,
@@ -28,7 +28,7 @@ from .phase1_core.invariant_gates_bridge import (
     hash_model,
     using_rust,
 )
-from .phase1_core.invariant_oap import (
+from .invariant.phase1_core.invariant_oap import (
     OAPEngine,
     ViolationType,
 )
