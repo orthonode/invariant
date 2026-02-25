@@ -285,6 +285,16 @@ class InvariantMiner:
         self.axon.start()
         bt.logging.success(f"Axon started on port {self.axon.port}")
 
+        # Sync metagraph immediately so the blacklist can pass validator hotkeys
+        # from the first request onward (before serve_axon's inclusion wait).
+        try:
+            self.metagraph.sync(subtensor=self.subtensor)
+            bt.logging.info(
+                f"Metagraph synced at startup: {len(self.metagraph.hotkeys)} hotkeys"
+            )
+        except Exception as e:
+            bt.logging.warning(f"Initial metagraph sync failed ({e}) — blacklist may reject early requests")
+
         # Announce axon to chain — retry once, but never abort if it fails.
         # On local --dev nodes serve_axon may return Custom Error 10 if the
         # subnet was just created and state is still settling; the axon is
@@ -313,10 +323,10 @@ class InvariantMiner:
             try:
                 if step % 5 == 0:
                     self.metagraph.sync(subtensor=self.subtensor)
-                    bt.logging.info(
-                        f"[step={step}] NTS={self.oap.get_nts(self.agent_id_hex):.1f} "
-                        f"counter={self.counter}"
-                    )
+                bt.logging.info(
+                    f"[step={step}] NTS={self.oap.get_nts(self.agent_id_hex):.1f} "
+                    f"counter={self.counter} | hotkeys={len(self.metagraph.hotkeys)}"
+                )
                 step += 1
                 time.sleep(12)
             except KeyboardInterrupt:

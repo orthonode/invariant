@@ -84,11 +84,11 @@ def ensure_wallet(name: str, hotkey: str = "default") -> bt.Wallet:
     created_cold = False
     created_hot  = False
 
-    if not Path(w.coldkeyfile.path).exists():
+    if not Path(w.coldkey_file.path).exists():
         w.create_new_coldkey(n_words=12, use_password=False, overwrite=False)
         created_cold = True
 
-    if not Path(w.hotkeyfile.path).exists():
+    if not Path(w.hotkey_file.path).exists():
         w.create_new_hotkey(n_words=12, use_password=False, overwrite=False)
         created_hot = True
 
@@ -143,12 +143,11 @@ for name, addr in COLDKEYS.items():
 # ── Step 4: Create subnet ────────────────────────────────────────────────────
 print(f"\n{BO}[4/6] Ensuring subnet {NETUID} exists...{RS}")
 try:
-    existing = bt_sub.get_subnets()
-    if NETUID in existing:
+    if bt_sub.subnet_exists(netuid=NETUID):
         ok(f"Subnet {NETUID} already exists")
     else:
         owner_wallet = wallets["owner"]
-        result = bt_sub.register_subnetwork(
+        result = bt_sub.register_subnet(
             wallet=owner_wallet,
             prompt=False,
         )
@@ -165,7 +164,7 @@ for wallet_name in ["miner1", "validator1"]:
     w  = wallets[wallet_name]
     hk = w.hotkey.ss58_address
     try:
-        if bt_sub.is_hotkey_registered(netuid=NETUID, hotkey_ss58=hk):
+        if bt_sub.is_hotkey_registered_on_subnet(hotkey_ss58=hk, netuid=NETUID):
             ok(f"{wallet_name}: already registered on subnet {NETUID}")
             continue
     except Exception:
