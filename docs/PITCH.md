@@ -65,7 +65,7 @@ A miner with NTS 40 (prior violations, gaming history) and a perfect output scor
 
 No other team in this ideathon can say what we say in one paragraph:
 
-> *"INVARIANT is not a whitepaper. The four-gate execution integrity model is live on Arbitrum Sepolia (contract `0xD661a1aB8CEFaaCd78F4B968670C3bC438415615`, 89+ verified transactions) and TON Testnet (contract `kQBVqAhPv_ANWm0hfjJdLnQmvvC8_rQ_NEryVX3uFOUF05OP`, 17+ verified transactions). Cross-layer SHA-256 and Keccak-256 parity is validated across 10,000+ test vectors. The Python port for Bittensor is the same four-gate logic in a third runtime — we estimate 10 days of engineering work to reach testnet deployment. Where other teams submit ideas, we submit evidence."*
+> *"INVARIANT is not a whitepaper. The four-gate execution integrity model is live on Arbitrum Sepolia (contract `0xD661a1aB8CEFaaCd78F4B968670C3bC438415615`, 89+ verified transactions) and TON Testnet (contract `kQBVqAhPv_ANWm0hfjJdLnQmvvC8_rQ_NEryVX3uFOUF05OP`, 17+ verified transactions). Cross-layer SHA-256 and Keccak-256 parity is validated across 10,000+ test vectors. The Python port for Bittensor is the same four-gate logic in a third runtime — we estimate 10 days of engineering work to reach testnet deployment. Phase 2 testnet deployment is in active progress as of submission — target: March 2026. The OAP engine (`invariant_oap.py`) is fully implemented and passing tests — architecture is additionally published at orthonode.xyz/oap.html. Where other teams submit ideas, we submit evidence."*
 
 ---
 
@@ -235,7 +235,7 @@ Companies consuming AI inference from Bittensor subnets have no way to audit whe
 - At 1M receipts/day: $1,000–$10,000/day protocol revenue
 
 **3. Regulatory compliance (18–36 months)**  
-EU AI Act Article 13 requires traceability of AI system outputs. INVARIANT receipts are immutable, timestamped, and cryptographically bound to a specific model version. This is exactly the audit trail regulators are demanding.
+EU AI Act Article 13 requires traceability of AI outputs. INVARIANT receipts are the minimal sufficient audit trail: model version, execution timestamp, input hash, output hash — immutably logged. Any enterprise or platform deploying AI inference into EU-regulated contexts will need exactly this artifact. Most Bittensor projects have never considered this buyer.
 
 ---
 
@@ -306,7 +306,7 @@ Orthonode builds **deterministic physical verification infrastructure** for auto
 
 - **SHA** — hardware attestation on Arbitrum (live)
 - **TON-SHA** — agent trust on TON (live)
-- **OAP** — lifecycle integrity governance (in development)
+- **OAP** — lifecycle integrity governance (fully implemented, `invariant_oap.py` in repo, architecture published at orthonode.xyz/oap.html)
 - **Nexus Protocol** — zero-trust edge gateway (Phase 1.4.0 active)
 
 **Location:** Bhopal, Madhya Pradesh, India  

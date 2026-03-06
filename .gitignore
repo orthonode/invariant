@@ -378,3 +378,4 @@ coverage/
 # Profiling
 *.prof
 *.pstats
+.claude/
